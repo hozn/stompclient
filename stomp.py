@@ -44,7 +44,7 @@ class Stomp:
     </connector>
     """
     def __init__(self,hostname,port):
-        """ Initialize Stomp object
+        """Initialize Stomp object
         Also accepts arguments needed to build the TCP connection.
         
         from stomp import Stomp

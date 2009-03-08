@@ -19,13 +19,35 @@
 
 class Frame:
     """Build and manage a STOMP Frame.
+
+    This is useful for connecting to and communicating with
+    Apache ActiveMQ, an open source Java Message Service (JMS)
+    message broker.
+
+    For specifics on the protocol, see: http://stomp.codehaus.org/Protocol
+
+    This library is basically a Python implementation of Perl's Net::Stomp
+    See: http://search.cpan.org/dist/Net-Stomp/lib/Net/Stomp.pm
+
+    To enable the ActiveMQ Broker for Stomp add the following to the activemq.xml configuration:
+
+    <connector>
+        <serverTransport uri="stomp://localhost:61613"/>
+    </connector>
+
     """
     def __init__(self):
+        """Initialize Frame object
+        >>> frameobj = Frame()
+        """
         self.command = ''
         self.headers = {}
         self.body    = ''
 
     def build_frame(self,args):
+        """Build a frame based on arguments
+        >>> frame = frameobj.build_frame(({'command':'CONNECT','headers':{}})
+        """
         self.command = args['command']
         self.headers = args['headers']
         if 'body' in args:
@@ -33,6 +55,10 @@ class Frame:
         return self
 
     def as_string(self):
+        """Make raw string from frame
+        Suitable for passing over socket to STOMP server
+        >>> sock.send(frame.as_string())
+        """
         command = self.command
         headers = self.headers
         body    = self.body
@@ -51,18 +77,22 @@ class Frame:
         frame += "\n%s\x00" % body
         return frame
 
-    def parse(self, sock, package=''):
+    def parse(self, sock):
+        """Parse data from socket
+        Accepts socket object as argument
+        >>> frameobj.parse(sock)
+        """
         command = ''
         body    = ''
         headers = {}
 
         while True:
             sock.recv(1)
-            command = self.getline(sock)
+            command = self._getline(sock)
             break
 
         while True:
-            line = self.getline(sock)
+            line = self._getline(sock)
             if line == '':
                 break
             (key,value) = line.split(':',1)
@@ -70,7 +100,6 @@ class Frame:
             continue
 
         if 'content-length' in headers:
-            sock.recv(1)
             sock.recvfrom_into(body, headers['content-length'])
             headers['bytes_message'] = True
         else:
@@ -87,7 +116,8 @@ class Frame:
         frame = frame.build_frame({'command':command,'headers':headers,'body':body})
         return frame
 
-    def getline(self, sock):
+    def _getline(self, sock):
+        """Get a single line from socket"""
         buffer = ''
         while not buffer.endswith('\n'):
             buffer += sock.recv(1)
