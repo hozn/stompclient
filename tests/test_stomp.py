@@ -37,7 +37,7 @@ def test_produce(host,queue):
     stomp.disconnect()
 
 if __name__ == '__main__':
-    dev = 'ag20120.ops.ag.com'
+    host  = 'localhost'
     queue = '/queue/ben_test_stomp'
-    #test_produce(dev,queue)
-    test_consume(dev,queue)
+    test_produce(host,queue)
+    test_consume(host,queue)
