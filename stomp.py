@@ -33,9 +33,10 @@ class Stomp:
         >>> from stomp import Stomp
         >>> stomp = Stomp('hostname', 61613)
         """
+        self.host = hostname
+        self.port = port
+        self.frame = ''
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sock.connect((hostname,port))
-        self.frame = Frame()
 
     def connect(self, conf={}):
         """Connect to STOMP server
@@ -43,9 +44,14 @@ class Stomp:
 
         >>> stomp.connect()
         """
-        frame = self.frame.build_frame({'command':'CONNECT','headers':conf})
-        self.send_frame(frame)
-        frame = self.receive_frame()
+        try:
+            self.sock.connect((self.host,self.port))
+            self.frame = Frame(self.sock)
+            self.frame.connect()
+        except (socket.error,socket.timeout), err:
+            print "Cannot connect to %s on port %d" %(self.host,self.port)
+            print "Caught error: %s" % err
+            raise SystemExit
 
     def disconnect(self, conf={}):
         """Disconnect from STOMP server
@@ -55,7 +61,7 @@ class Stomp:
         """
         frame = self.frame.build_frame({'command':'DISCONNECT','headers':conf})
         self.send_frame(frame)
-        self.sock.close()
+        self.sock.shutdown(0)
 
     def send(self,conf={}):
         """Send message to STOMP server
@@ -72,8 +78,11 @@ class Stomp:
         """
         body = conf['body']
         del conf['body']
-        frame = self.frame.build_frame({'command':'SEND','headers':conf,'body':body})
-        self.send_frame(frame)
+        frame = self.frame.build_frame({'command':'SEND',
+                                        'headers':conf,
+                                        'body':body}, want_receipt=True)
+        frame = self.send_frame(frame)
+        return frame
 
     def subscribe(self,conf={}):
         """Subscribe to a given destination
@@ -130,7 +139,8 @@ class Stomp:
         ...     print fram.headers['message-id']
         ...     stomp.ack(frame)
         """
-        frame = self.frame.parse(self.sock)
+
+        frame = self.frame.parse_frame()
         return frame
 
     def send_frame(self, frame):
@@ -147,4 +157,5 @@ class Stomp:
         >>> frame = frameobj.build_frame({'command':'DISCONNECT','headers':{}})
         >>> stomp.send_frame(frame)
         """
-        self.sock.send(frame.as_string())
+        frame = self.frame.send_frame(frame.as_string())
+        return frame

@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+import socket
+import random
 
 class Frame:
     """Build and manage a STOMP Frame.
@@ -19,22 +21,44 @@ class Frame:
     </connector>
 
     """
-    def __init__(self):
+    def __init__(self,sock):
         """Initialize Frame object
-        >>> frameobj = Frame()
+        >>> frameobj = Frame(socket)
         """
-        self.command = ''
-        self.headers = {}
-        self.body    = ''
+        self.command  = None
+        self.headers  = {}
+        self.body     = None
+        self.session  = None
+        self.my_name  = socket.gethostbyname(socket.gethostname())
+        self.sock     = sock
 
-    def build_frame(self,args):
+    def connect(self):
+        """Connect to the STOMP server, get session id
+        >>> frameobj.connect()
+        """
+        frame = self.build_frame({'command':'CONNECT','headers':{}})
+        self.send_frame(frame.as_string())
+        line = self._getline()
+        if line == 'CONNECTED':
+            connected = True
+            self.session = (self.parse_headers(self._getline()))
+            self._getline()
+
+    def build_frame(self,args,want_receipt=False):
         """Build a frame based on arguments
         >>> frame = frameobj.build_frame(({'command':'CONNECT','headers':{}})
+        Optional argument to get receipt of message.
+        >>> frame = frameobj.build_frame(({'command':'SEND',
+        ...                                'headers':headers,
+        ...                                'body':body},want_receipt=True)
         """
         self.command = args['command']
         self.headers = args['headers']
         if 'body' in args:
             self.body = args['body']
+        if want_receipt:
+            receipt_stamp = str(random.randint(0,10000000))
+            self.headers['receipt'] = self.session['session'] + "-" + receipt_stamp
         return self
 
     def as_string(self):
@@ -47,6 +71,8 @@ class Frame:
         body    = self.body
         frame   = "%s\n" % command
         
+        headers['x-client'] = self.my_name
+
         bytes_message = False
         if 'bytes_message' in headers:
             bytes_message = True
@@ -60,7 +86,7 @@ class Frame:
         frame += "\n%s\x00" % body
         return frame
 
-    def parse(self, sock):
+    def parse_frame(self):
         """Parse data from socket
         Accepts socket object as argument
         >>> frameobj.parse(sock)
@@ -68,41 +94,57 @@ class Frame:
         command = ''
         body    = ''
         headers = {}
+        server_cmds = ['MESSAGE','RECEIPT','ERROR']
 
         while True:
-            sock.recv(1)
-            command = self._getline(sock)
-            break
-
-        while True:
-            line = self._getline(sock)
-            if line == '':
-                break
-            (key,value) = line.split(':',1)
-            headers[key] = value
-            continue
-
-        if 'content-length' in headers:
-            sock.recvfrom_into(body, headers['content-length'])
-            headers['bytes_message'] = True
-        else:
             while True:
-                byte = sock.recv(1)
-                if not byte:
-                    print "Error reading body!"
-                    exit(1)
-                if byte == "\000":
+                line = self._getline()
+                if line in server_cmds:
+                    continue
+                elif line == '\x00':
+                    continue 
+                if line == '':
                     break
-                body += byte
+                headers.update(self.parse_headers(line))
+                continue
+            
+            if 'content-length' in headers:
+                body = self._getline()
+                headers['bytes_message'] = True
+            if headers:
+                while True:
+                    byte = self.sock.recv(1)
+                    if not byte:
+                        exit(1)
+                    if byte == "\x00":
+                        break
+                    body += byte
+                break
+            else:
+                continue
 
-        frame = Frame()
+        frame = Frame(self.sock)
         frame = frame.build_frame({'command':command,'headers':headers,'body':body})
         return frame
 
-    def _getline(self, sock):
+    def parse_headers(self,str):
+        headers = {}
+        (key,value) = str.split(':',1)
+        headers[key] = value
+        return headers
+
+    def send_frame(self,frame):
+        """Send frame to server"""
+        self.sock.sendall(frame)
+        if 'receipt' in self.headers:
+            frame = self.parse_frame()
+            return frame
+        else:
+            return None
+
+    def _getline(self):
         """Get a single line from socket"""
         buffer = ''
         while not buffer.endswith('\n'):
-            buffer += sock.recv(1)
+            buffer += self.sock.recv(1)
         return buffer[:-1]
-
