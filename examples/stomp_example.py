@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 import sys,time
 from stomp import Stomp
+from optparse import OptionParser
 
-def consume(host,port,queue):
+def consume(host,port,queue,num=None):
     try:
         stomp = Stomp(host,port)
         stomp.connect()
@@ -13,15 +14,27 @@ def consume(host,port,queue):
     stomp.subscribe({'destination':queue,
                      'ack':'client'})
 
-    while True:
-        try:
-            frame = stomp.receive_frame()
-            stomp.ack(frame)
-            print frame.headers['message-id']
-            print frame.body
-        except KeyboardInterrupt:
-            stomp.disconnect()
-            break
+    if not num:
+        while True:
+            try:
+                frame = stomp.receive_frame()
+                stomp.ack(frame)
+                print frame.headers['message-id']
+                print frame.body
+            except KeyboardInterrupt:
+                stomp.disconnect()
+                break
+    else:
+        for i in xrange(0,num):
+            try:
+                frame = stomp.receive_frame()
+                stomp.ack(frame)
+                print frame.headers['message-id']
+                print frame.body
+            except KeyboardInterrupt:
+                stomp.disconnect()
+                break
+
 
 def produce(host,port,queue,num=1000):
     try:
@@ -32,25 +45,51 @@ def produce(host,port,queue,num=1000):
         raise
     for i in xrange(0,num):
         print "Message #%d" % i
-        start = time.time()
         print stomp.send({'destination':queue,
                           'body':'Testing %d' % i,
                           'persistent':'true'}).headers['receipt-id']
-        stop = time.time()
-        print (stop - start) * 1000.0
 
     stomp.disconnect()
 
 if __name__ == '__main__':
-    #host  = 'localhost'
-    host = 'localhost'
-    #queue = '/queue/python_stomp_example'
-    queue = '/queue/ben_test_stomp'
-    port  = 61613
-    if sys.argv[1] == 'produce':
-        if len(sys.argv) == 3:
-            produce(host,port,queue,num=int(sys.argv[2]))
+    parser = OptionParser()
+    parser.add_option('-H', '--host', action='store', 
+                      type='string', dest='host', help='hostname')
+    parser.add_option('-p', '--port', action='store', 
+                      type='int', dest='port', help='port')
+    parser.add_option('-q', '--queue', action='store', 
+                      type='string', dest='queue', help='destination queue')
+    parser.add_option('-P', '--produce', action='store_true', 
+                      default=False, dest='produce', help='produce messages')
+    parser.add_option('-c', '--consume', action='store_true', 
+                      default=False, dest='consume', help='consume messages')
+    parser.add_option('-n', '--number', action='store',
+                      type='int', dest='number', 
+                      help='produce or consume NUMBER messages')
+
+    (options,args) = parser.parse_args()
+
+    if not options.host:
+        print "Host name is required!"
+        parser.print_help()
+        raise SystemExit
+    if not options.port:
+        print "Port is required!"
+        parser.print_help()
+        raise SystemExit
+    if not options.queue:
+        print "Queue name is required!"
+        parser.print_help()
+        raise SystemExit
+
+    if options.produce:
+        print "damn"
+        if options.number:
+            produce(options.host,options.port,options.queue,options.number)
         else:
-            produce(host,port,queue)
-    if sys.argv[1] == 'consume':
-        consume(host,port,queue)
+            produce(options.host,options.port,options.queue)
+    elif options.consume:
+        if options.number:
+            consume(options.host,options.port,options.queue,options.number)
+        else:
+            consume(options.host,options.port,options.queue)
