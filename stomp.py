@@ -33,10 +33,10 @@ class Stomp:
         >>> from stomp import Stomp
         >>> stomp = Stomp('hostname', 61613)
         """
-        self.host = hostname
-        self.port = port
-        self.frame = ''
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.host  = hostname
+        self.port  = port
+        self.sock  = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.frame = Frame()
 
     def connect(self, conf={}):
         """Connect to STOMP server
@@ -46,8 +46,7 @@ class Stomp:
         """
         try:
             self.sock.connect((self.host,self.port))
-            self.frame = Frame(self.sock)
-            self.frame.connect()
+            self.frame.connect(self.sock)
         except (socket.error,socket.timeout), err:
             print "Cannot connect to %s on port %d" %(self.host,self.port)
             print "Caught error: %s" % err

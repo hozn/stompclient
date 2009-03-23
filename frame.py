@@ -21,7 +21,7 @@ class Frame:
     </connector>
 
     """
-    def __init__(self,sock):
+    def __init__(self,sock=None):
         """Initialize Frame object
         >>> frameobj = Frame(socket)
         """
@@ -32,10 +32,11 @@ class Frame:
         self.my_name  = socket.gethostbyname(socket.gethostname())
         self.sock     = sock
 
-    def connect(self):
+    def connect(self,sock):
         """Connect to the STOMP server, get session id
         >>> frameobj.connect()
         """
+        self.sock = sock
         frame = self.build_frame({'command':'CONNECT','headers':{}})
         self.send_frame(frame.as_string())
         line = self._getline()
@@ -140,7 +141,7 @@ class Frame:
             frame = self.parse_frame()
             return frame
         else:
-            return None
+            return None 
 
     def _getline(self):
         """Get a single line from socket"""
