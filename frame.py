@@ -23,6 +23,7 @@ class Frame:
     """
     def __init__(self,sock=None):
         """Initialize Frame object
+        Passing a socket object is optional
         >>> frameobj = Frame(socket)
         """
         self.command  = None
@@ -34,7 +35,7 @@ class Frame:
 
     def connect(self,sock):
         """Connect to the STOMP server, get session id
-        >>> frameobj.connect()
+        >>> frameobj.connect(sock)
         """
         self.sock = sock
         frame = self.build_frame({'command':'CONNECT','headers':{}})
@@ -65,7 +66,7 @@ class Frame:
     def as_string(self):
         """Make raw string from frame
         Suitable for passing over socket to STOMP server
-        >>> sock.send(frame.as_string())
+        >>> stomp.send(frameobj.as_string())
         """
         command = self.command
         headers = self.headers
@@ -90,7 +91,7 @@ class Frame:
     def parse_frame(self):
         """Parse data from socket
         Accepts socket object as argument
-        >>> frameobj.parse(sock)
+        >>> frameobj.parse_frame(sock)
         """
         command = ''
         body    = ''
@@ -129,13 +130,18 @@ class Frame:
         return frame
 
     def parse_headers(self,str):
+        """Parse headers, return
+        >>> frameobj.parse_headers(str)
+        """
         headers = {}
         (key,value) = str.split(':',1)
         headers[key] = value
         return headers
 
     def send_frame(self,frame):
-        """Send frame to server"""
+        """Send frame to server, get receipt if needed
+        >>> frameobj.send_frame(frame)
+        """
         self.sock.sendall(frame)
         if 'receipt' in self.headers:
             frame = self.parse_frame()
@@ -144,7 +150,9 @@ class Frame:
             return None 
 
     def _getline(self):
-        """Get a single line from socket"""
+        """Get a single line from socket
+        >>> self._getline()
+        """
         buffer = ''
         while not buffer.endswith('\n'):
             buffer += self.sock.recv(1)
