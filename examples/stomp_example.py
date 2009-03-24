@@ -24,6 +24,7 @@ def consume(host,port,queue,num=None):
             except KeyboardInterrupt:
                 stomp.disconnect()
                 break
+        stomp.disconnect()
     else:
         for i in xrange(0,num):
             try:
@@ -34,7 +35,7 @@ def consume(host,port,queue,num=None):
             except KeyboardInterrupt:
                 stomp.disconnect()
                 break
-
+        stomp.disconnect()
 
 def produce(host,port,queue,num=1000):
     try:
