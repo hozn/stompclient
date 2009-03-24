@@ -4,7 +4,6 @@ from unittest import TestCase
 import sys
 import socket
 import stomp
-import stomp
 import frame
 from stomp import Stomp
 from frame import Frame
@@ -121,6 +120,6 @@ class WhenConsumingMessages(DingusTestCase(Stomp)):
         assert self.frame.calls('send_frame',send_args.as_string())
 
 class WhenSocketCantConnect(TestCase):
-        def should_fail_connect(self):
-            self.stomp = Stomp('localhost',99999)
-            self.failUnlessRaises(SystemExit,self.stomp.connect)
+    def should_fail_connect(self):
+        self.stomp = Stomp('localhost',99999)
+        self.failUnlessRaises(SystemExit,self.stomp.connect)

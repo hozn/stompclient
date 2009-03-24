@@ -42,7 +42,6 @@ class Frame:
         self.send_frame(frame.as_string())
         line = self._getline()
         if line == 'CONNECTED':
-            connected = True
             self.session = (self.parse_headers(self._getline()))
             self._getline()
 
