@@ -78,7 +78,7 @@ class Frame:
         if 'bytes_message' in headers:
             bytes_message = True
             del headers['bytes_message']
-            headers['content-length'] = body.len()
+            headers['content-length'] = len(body)
 
         if headers:
             for k,v in headers.iteritems():
