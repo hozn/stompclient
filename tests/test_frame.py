@@ -82,3 +82,10 @@ class WhenSettingUp(DingusTestCase(Frame)):
                                              'body':body})
 
         assert 'content-length:%i' % len(body) in this_frame.as_string()
+
+    def should_parse_headers(self):
+        header = 'destination:/queue/nose_test'
+        parsed = self.frame.parse_headers(header)
+
+        assert isinstance(parsed,type({}))
+
