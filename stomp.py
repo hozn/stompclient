@@ -39,7 +39,7 @@ class Stomp:
         self.subscribed = False
         self.frame      = Frame()
 
-    def connect(self, conf={}):
+    def connect(self, conf=None):
         """Connect to STOMP server
         This method does not require any arguments.
 
@@ -53,7 +53,7 @@ class Stomp:
             print "Caught error: %s" % err
             raise SystemExit
 
-    def disconnect(self, conf={}):
+    def disconnect(self, conf=None):
         """Disconnect from STOMP server
         This method does not require any arguments.
         
@@ -65,7 +65,7 @@ class Stomp:
         self.send_frame(frame)
         self.sock.shutdown(0)
 
-    def send(self,conf={}):
+    def send(self,conf=None):
         """Send message to STOMP server
 
         You'll need to pass the body and any other headers your STOMP server likes.
@@ -86,7 +86,7 @@ class Stomp:
         frame = self.send_frame(frame)
         return frame
 
-    def subscribe(self,conf={}):
+    def subscribe(self,conf=None):
         """Subscribe to a given destination
 
         You will need to pass any headers your STOMP server likes.
@@ -101,7 +101,46 @@ class Stomp:
         self.send_frame(frame)
         self.subscribed = True
 
-    def unsubscribe(self,conf={}):
+    def begin(self,conf=None):
+        """Subscribe to a given destination
+
+        You will need to pass any headers your STOMP server likes.
+
+        destination is *required*
+
+        In the case of ActiveMQ, you could do this:
+        >>> stomp.begin({'transaction':'<randomish_hash_like_thing>'})
+        """
+        frame = self.frame.build_frame({'command':'BEGIN','headers':conf})
+        self.send_frame(frame)
+
+    def commit(self,conf=None):
+        """Subscribe to a given destination
+
+        You will need to pass any headers your STOMP server likes.
+
+        destination is *required*
+
+        In the case of ActiveMQ, you could do this:
+        >>> stomp.commit({'transaction':'<randomish_hash_like_thing>'})
+        """
+        frame = self.frame.build_frame({'command':'COMMIT','headers':conf})
+        self.send_frame(frame)
+
+    def abort(self,conf=None):
+        """Subscribe to a given destination
+
+        You will need to pass any headers your STOMP server likes.
+
+        destination is *required*
+
+        In the case of ActiveMQ, you could do this:
+        >>> stomp.abort({'transaction':'<randomish_hash_like_thing>'})
+        """
+        frame = self.frame.build_frame({'command':'ABORT','headers':conf})
+        self.send_frame(frame)
+
+    def unsubscribe(self,conf=None):
         """Unsubscribe from a given destination
 
         You will need to pass any headers your STOMP server likes.
