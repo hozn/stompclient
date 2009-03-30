@@ -61,6 +61,8 @@ class Stomp:
         """
         if self.subscribed:
             self.unsubscribe()
+        if conf is None:
+            conf = {}
         frame = self.frame.build_frame({'command':'DISCONNECT','headers':conf})
         self.send_frame(frame)
         self.sock.shutdown(0)
