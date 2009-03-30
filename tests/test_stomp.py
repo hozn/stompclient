@@ -2,11 +2,8 @@
 from dingus import Dingus, DingusTestCase, DontCare
 from unittest import TestCase
 import sys
-import socket
-import stomp
-import frame
 from stomp import Stomp
-from frame import Frame
+import stomp
 
 class WhenConnecting(DingusTestCase(Stomp)):
 
@@ -19,7 +16,7 @@ class WhenConnecting(DingusTestCase(Stomp)):
         self.frame = self.stomp.frame
 
     def should_set_socket_opts(self):
-        assert stomp.socket.calls('socket',DontCare,DontCare)
+        assert stomp.stomp.socket.calls('socket',DontCare,DontCare)
 
     def should_connect(self):
         self.stomp.connect()
