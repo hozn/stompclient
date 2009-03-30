@@ -55,8 +55,7 @@ class Frame:
         """
         self.command = args['command']
         self.headers = args['headers']
-        if 'body' in args:
-            self.body = args['body']
+        self.body = args.get('body')
         if want_receipt:
             receipt_stamp = str(random.randint(0,10000000))
             self.headers['receipt'] = self.session['session'] + "-" + receipt_stamp
