@@ -19,18 +19,17 @@ def consume(host,port,queue,num=None):
             try:
                 frame = stomp.receive_frame()
                 stomp.ack(frame)
-                print frame.headers['message-id']
+                print frame.headers.get('message-id')
                 print frame.body
             except KeyboardInterrupt:
                 stomp.disconnect()
                 break
-        stomp.disconnect()
     else:
         for i in xrange(0,num):
             try:
                 frame = stomp.receive_frame()
                 stomp.ack(frame)
-                print frame.headers['message-id']
+                print frame.headers.get('message-id')
                 print frame.body
             except KeyboardInterrupt:
                 stomp.disconnect()
@@ -46,9 +45,10 @@ def produce(host,port,queue,num=1000):
         raise
     for i in xrange(0,num):
         print "Message #%d" % i
-        print stomp.send({'destination':queue,
-                          'body':'Testing %d' % i,
-                          'persistent':'true'}).headers['receipt-id']
+        this_frame = stomp.send({'destination':queue,
+                                 'body':'Testing %d' % i,
+                                 'persistent':'true'})
+        print "Receipt: %s" % this_frame.headers.get('receipt-id')
 
     stomp.disconnect()
 
@@ -84,7 +84,6 @@ if __name__ == '__main__':
         raise SystemExit
 
     if options.produce:
-        print "damn"
         if options.number:
             produce(options.host,options.port,options.queue,options.number)
         else:

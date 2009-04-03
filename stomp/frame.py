@@ -40,10 +40,11 @@ class Frame:
         self.sock = sock
         frame = self.build_frame({'command':'CONNECT','headers':{}})
         self.send_frame(frame.as_string())
-        line = self._getline()
-        if line == 'CONNECTED':
-            self.session = (self.parse_headers(self._getline()))
-            self._getline()
+        self._set_session()
+
+    def _set_session(self):
+        this_frame = self.parse_frame()
+        self.session = this_frame.headers
 
     def build_frame(self,args,want_receipt=False):
         """Build a frame based on arguments
@@ -53,12 +54,12 @@ class Frame:
         ...                                'headers':headers,
         ...                                'body':body},want_receipt=True)
         """
-        self.command = args['command']
-        self.headers = args['headers']
-        self.body = args.get('body')
+        self.command = args.get('command')
+        self.headers = args.get('headers')
+        self.body    = args.get('body')
         if want_receipt:
             receipt_stamp = str(random.randint(0,10000000))
-            self.headers['receipt'] = self.session['session'] + "-" + receipt_stamp
+            self.headers['receipt'] = self.session.get('session') + "-" + receipt_stamp
         return self
 
     def as_string(self):
@@ -91,49 +92,40 @@ class Frame:
         Accepts socket object as argument
         >>> frameobj.parse_frame(sock)
         """
-        command = ''
-        body    = ''
+        command = None 
+        body    = None
         headers = {}
-        server_cmds = ['MESSAGE','RECEIPT','ERROR']
 
         while True:
-            while True:
-                line = self._getline()
-                if line in server_cmds:
-                    continue
-                elif line == '\x00':
-                    continue 
-                if line == '':
-                    break
-                headers.update(self.parse_headers(line))
-                continue
-            
+            line = self._getline()
+            command = self.parse_command(line)
+            line = line[len(command)+1:]
+            headers_str, body = line.split('\n\n')
+            headers = self.parse_headers(headers_str)
+
             if 'content-length' in headers:
-                body = self._getline()
                 headers['bytes_message'] = True
-            if headers:
-                while True:
-                    byte = self.sock.recv(1)
-                    if not byte:
-                        exit(1)
-                    if byte == "\x00":
-                        break
-                    body += byte
-                break
-            else:
-                continue
+            break
 
         frame = Frame(self.sock)
         frame = frame.build_frame({'command':command,'headers':headers,'body':body})
         return frame
+
+    def parse_command(self,str):
+        """Parse command, return
+        >>> frameobj.parse_command(str)
+        """
+        command = str.split('\n',1)[0] 
+        return command
 
     def parse_headers(self,str):
         """Parse headers, return
         >>> frameobj.parse_headers(str)
         """
         headers = {}
-        (key,value) = str.split(':',1)
-        headers[key] = value
+        for line in str.split('\n'):
+            (key,value) = line.split(':',1)
+            headers[key] = value
         return headers
 
     def send_frame(self,frame):
@@ -152,6 +144,6 @@ class Frame:
         >>> self._getline()
         """
         buffer = ''
-        while not buffer.endswith('\n'):
+        while not buffer.endswith('\x00\n'):
             buffer += self.sock.recv(1)
-        return buffer[:-1]
+        return buffer[:-2]

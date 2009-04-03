@@ -36,7 +36,7 @@ class Stomp:
         self.host       = hostname
         self.port       = port
         self.sock       = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.subscribed = False
+        self.subscribed = None
         self.frame      = Frame()
 
     def connect(self, conf=None):
@@ -60,7 +60,7 @@ class Stomp:
         >>> stomp.disconnect()
         """
         if self.subscribed:
-            self.unsubscribe()
+            self.unsubscribe({'destination':self.subscribed})
         if conf is None:
             conf = {}
         frame = self.frame.build_frame({'command':'DISCONNECT','headers':conf})
@@ -101,7 +101,7 @@ class Stomp:
         """
         frame = self.frame.build_frame({'command':'SUBSCRIBE','headers':conf})
         self.send_frame(frame)
-        self.subscribed = True
+        self.subscribed = conf.get('destination')
 
     def begin(self,conf=None):
         """Subscribe to a given destination
@@ -151,9 +151,11 @@ class Stomp:
 
         >>> stomp.unsubscribe({'destination':'/queue/foo'})
         """
+        if conf is None:
+            conf = {}
         frame = self.frame.build_frame({'command':'UNSUBSCRIBE','headers':conf})
         self.send_frame(frame)
-        self.subscribed = False
+        self.subscribed = None
 
     def ack(self,frame):
         """Acknowledge receipt of a message
@@ -181,7 +183,7 @@ class Stomp:
 
         >>> while True:
         ...     frame = stomp.receive_frame()
-        ...     print fram.headers['message-id']
+        ...     print frame.headers['message-id']
         ...     stomp.ack(frame)
         """
 

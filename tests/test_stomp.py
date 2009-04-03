@@ -2,8 +2,8 @@
 from dingus import Dingus, DingusTestCase, DontCare
 from unittest import TestCase
 import sys
-from stomp import Stomp
 import stomp
+from stomp import Stomp
 
 class WhenConnecting(DingusTestCase(Stomp)):
 
