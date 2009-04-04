@@ -89,8 +89,7 @@ class Frame:
 
     def parse_frame(self):
         """Parse data from socket
-        Accepts socket object as argument
-        >>> frameobj.parse_frame(sock)
+        >>> frameobj.parse_frame()
         """
         command = None 
         body    = None
