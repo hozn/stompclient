@@ -49,7 +49,7 @@ class Frame:
     def build_frame(self,args,want_receipt=False):
         """Build a frame based on arguments
         >>> frame = frameobj.build_frame(({'command':'CONNECT','headers':{}})
-        Optional argument to get receipt of message.
+        Optional argument to get receipt of message when planning to send.
         >>> frame = frameobj.build_frame(({'command':'SEND',
         ...                                'headers':headers,
         ...                                'body':body},want_receipt=True)
