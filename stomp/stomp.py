@@ -169,7 +169,7 @@ class Stomp:
         ...     frame = stomp.receive_frame()
         ...     stomp.ack(frame)
         """
-        msgid = frame.headers['message-id']
+        msgid = frame.headers.get('message-id')
         thisframe = self.frame.build_frame({'command':'ACK','headers':{'message-id':msgid}})
         self.send_frame(thisframe)
 
