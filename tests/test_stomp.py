@@ -14,6 +14,7 @@ class WhenConnecting(DingusTestCase(Stomp)):
         self.stomp = Stomp(self.host,self.port)
         self.sock  = self.stomp.sock
         self.frame = self.stomp.frame
+        self.stomp.connected = True
 
     def should_set_socket_opts(self):
         assert stomp.stomp.socket.calls('socket',DontCare,DontCare)
@@ -42,6 +43,7 @@ class WhenProducingMessages(DingusTestCase(Stomp)):
         self.stomp   = Stomp(self.host,self.port)
         self.frame   = self.stomp.frame
         self.sock    = self.stomp.sock
+        self.stomp.connected = True
         self.headers = {'destination':'/queue/nose_test',
                         'body':'test'}
 
@@ -63,6 +65,7 @@ class WhenUsingTransactions(DingusTestCase(Stomp)):
         self.stomp   = Stomp(self.host,self.port)
         self.frame   = self.stomp.frame
         self.sock    = self.stomp.sock
+        self.stomp.connected = True
         self.headers = {'transaction':'nose_123'}
 
     def should_begin(self):
@@ -102,6 +105,7 @@ class WhenConsumingMessages(DingusTestCase(Stomp)):
         self.stomp   = Stomp(self.host,self.port)
         self.frame   = self.stomp.frame
         self.sock    = self.stomp.sock
+        self.stomp.connected = True
         self.headers = {'destination':'/queue/nose_test',
                         'ack':'client'}
 
@@ -141,6 +145,29 @@ class WhenConsumingMessages(DingusTestCase(Stomp)):
         self.stomp.subscribed = True
         self.stomp.disconnect()
         assert not self.stomp.subscribed
+
+class WhenUsingProperties(TestCase):
+    def should_set_sub(self):
+        mystomp = Stomp('localhost',99999)
+        mystomp._set_subscribed({'destination':'/queue/nose_test'})
+        assert mystomp.subscribed is not None
+
+    def should_set_son(self):
+        mystomp = Stomp('localhost',99999)
+        mystomp._set_connected(True)
+        assert mystomp.connected
+
+class WhenNotConnected(TestCase):
+    def should_fail_to_send(self):
+        mystomp = Stomp('localhost',99999)
+        self.failUnlessRaises(stomp.stomp.NotConnectedError, mystomp.send)
+
+    def should_raise_nc(self):
+        mystomp = Stomp('localhost',99999)
+        try:
+            mystomp.send()
+        except stomp.stomp.NotConnectedError, err:
+            assert str(err) == "'Not connected to STOMP server.'"
 
 class WhenSocketCantConnect(TestCase):
     def should_fail_connect(self):

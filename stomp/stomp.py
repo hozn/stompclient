@@ -3,6 +3,14 @@
 import socket
 from frame import Frame
 
+class NotConnectedError(Exception):
+    """Raise if not connected"""
+    def __init__(self, value):
+        self.value = value
+    
+    def __str__(self):
+        return repr(self.value)
+
 class Stomp:
     """Dead simple Python STOMP client library
 
@@ -33,11 +41,34 @@ class Stomp:
         >>> from stomp import Stomp
         >>> stomp = Stomp('hostname', 61613)
         """
-        self.host       = hostname
-        self.port       = port
-        self.sock       = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.subscribed = None
-        self.frame      = Frame()
+        self.host        = hostname
+        self.port        = port
+        self.sock        = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._subscribed = None
+        self._connected  = None
+        self.frame       = Frame()
+
+    def _get_subscribed(self):
+        return self._subscribed
+
+    def _set_subscribed(self,sub):
+        self._subscribed = sub
+
+    subscribed = property(_get_subscribed, _set_subscribed, 
+                          'The queue or topic we are subscribed to')
+
+    def _get_connected(self):
+        return self._connected
+    
+    def _set_connected(self,conn):
+        self._connected = conn
+
+    connected = property(_get_connected, _set_connected,
+                         'Are we connected to STOMP Server')
+
+    def _is_connected(self):
+        if not self.connected:
+            raise NotConnectedError, 'Not connected to STOMP server.'
 
     def connect(self, conf=None):
         """Connect to STOMP server
@@ -48,6 +79,7 @@ class Stomp:
         try:
             self.sock.connect((self.host,self.port))
             self.frame.connect(self.sock)
+            self.connected = True
         except (socket.error,socket.timeout), err:
             print "Cannot connect to %s on port %d" %(self.host,self.port)
             print "Caught error: %s" % err
@@ -80,6 +112,7 @@ class Stomp:
         ...                 'body':'Testing',
         ...                 'persistent':'true'})
         """
+        self._is_connected()
         body = conf['body']
         del conf['body']
         frame = self.frame.build_frame({'command':'SEND',
@@ -99,6 +132,7 @@ class Stomp:
         >>> stomp.subscribe({'destination':'/queue/foo',
         ...                  'ack':'client'})
         """
+        self._is_connected()
         frame = self.frame.build_frame({'command':'SUBSCRIBE','headers':conf})
         self.send_frame(frame)
         self.subscribed = conf.get('destination')
@@ -113,6 +147,7 @@ class Stomp:
         In the case of ActiveMQ, you could do this:
         >>> stomp.begin({'transaction':'<randomish_hash_like_thing>'})
         """
+        self._is_connected()
         frame = self.frame.build_frame({'command':'BEGIN','headers':conf})
         self.send_frame(frame)
 
@@ -126,6 +161,7 @@ class Stomp:
         In the case of ActiveMQ, you could do this:
         >>> stomp.commit({'transaction':'<randomish_hash_like_thing>'})
         """
+        self._is_connected()
         frame = self.frame.build_frame({'command':'COMMIT','headers':conf})
         self.send_frame(frame)
 
@@ -139,6 +175,7 @@ class Stomp:
         In the case of ActiveMQ, you could do this:
         >>> stomp.abort({'transaction':'<randomish_hash_like_thing>'})
         """
+        self._is_connected()
         frame = self.frame.build_frame({'command':'ABORT','headers':conf})
         self.send_frame(frame)
 
@@ -151,6 +188,7 @@ class Stomp:
 
         >>> stomp.unsubscribe({'destination':'/queue/foo'})
         """
+        self._is_connected()
         if conf is None:
             conf = {}
         frame = self.frame.build_frame({'command':'UNSUBSCRIBE','headers':conf})
@@ -169,6 +207,7 @@ class Stomp:
         ...     frame = stomp.receive_frame()
         ...     stomp.ack(frame)
         """
+        self._is_connected()
         msgid = frame.headers.get('message-id')
         thisframe = self.frame.build_frame({'command':'ACK','headers':{'message-id':msgid}})
         self.send_frame(thisframe)
@@ -186,7 +225,7 @@ class Stomp:
         ...     print frame.headers['message-id']
         ...     stomp.ack(frame)
         """
-
+        self._is_connected()
         frame = self.frame.parse_frame()
         return frame
 
@@ -204,5 +243,6 @@ class Stomp:
         >>> frame = frameobj.build_frame({'command':'DISCONNECT','headers':{}})
         >>> stomp.send_frame(frame)
         """
+        self._is_connected()
         frame = self.frame.send_frame(frame.as_string())
         return frame
