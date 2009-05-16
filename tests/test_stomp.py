@@ -30,7 +30,7 @@ class WhenConnecting(DingusTestCase(Stomp)):
         built_frame_args = built_frame.args[0]
         send_args = built_frame[3]
     
-        assert built_frame_args['command'] is 'DISCONNECT'
+        assert built_frame_args['command'] == 'DISCONNECT'
         assert self.frame.calls('send_frame',send_args.as_string())
         assert self.stomp.sock.calls('shutdown',0)
 
@@ -53,7 +53,7 @@ class WhenProducingMessages(DingusTestCase(Stomp)):
         built_frame_args = built_frame.args[0]
         send_args = built_frame[3]
 
-        assert built_frame_args['command'] is 'SEND'
+        assert built_frame_args['command'] == 'SEND'
         assert self.frame.calls('send_frame',send_args.as_string())
 
 class WhenUsingTransactions(DingusTestCase(Stomp)):
@@ -74,7 +74,7 @@ class WhenUsingTransactions(DingusTestCase(Stomp)):
         built_frame_args = built_frame.args[0]
         send_args = built_frame[3]
 
-        assert built_frame_args['command'] is 'BEGIN'
+        assert built_frame_args['command'] == 'BEGIN'
         assert self.frame.calls('send_frame',send_args.as_string())
 
     def should_commit(self):
@@ -83,7 +83,7 @@ class WhenUsingTransactions(DingusTestCase(Stomp)):
         built_frame_args = built_frame.args[0]
         send_args = built_frame[3]
 
-        assert built_frame_args['command'] is 'COMMIT'
+        assert built_frame_args['command'] == 'COMMIT'
         assert self.frame.calls('send_frame',send_args.as_string())
 
     def should_abort(self):
@@ -92,7 +92,7 @@ class WhenUsingTransactions(DingusTestCase(Stomp)):
         built_frame_args = built_frame.args[0]
         send_args = built_frame[3]
 
-        assert built_frame_args['command'] is 'ABORT'
+        assert built_frame_args['command'] == 'ABORT'
         assert self.frame.calls('send_frame',send_args.as_string())
 
 
@@ -116,7 +116,7 @@ class WhenConsumingMessages(DingusTestCase(Stomp)):
         send_args = built_frame[3]
 
         assert self.stomp.subscribed
-        assert built_frame_args['command'] is 'SUBSCRIBE'
+        assert built_frame_args['command'] == 'SUBSCRIBE'
         assert self.frame.calls('send_frame',send_args.as_string())
 
     def should_receive_and_ack(self):
@@ -128,7 +128,7 @@ class WhenConsumingMessages(DingusTestCase(Stomp)):
         built_frame_args = built_frame.args[0]
         send_args = built_frame[3]
 
-        assert built_frame_args['command'] is 'ACK'
+        assert built_frame_args['command'] == 'ACK'
         assert self.frame.calls('send_frame',send_args.as_string())
 
     def should_unsubscribe(self):
@@ -137,9 +137,9 @@ class WhenConsumingMessages(DingusTestCase(Stomp)):
         built_frame_args = built_frame.args[0]
         send_args = built_frame[3]
 
-        assert built_frame_args['command'] is 'UNSUBSCRIBE'
+        assert built_frame_args['command'] == 'UNSUBSCRIBE'
         assert self.frame.calls('send_frame',send_args.as_string())
-        assert not self.stomp.subscribed, self.stomp.subscribed
+        assert not self.stomp.subscribed
 
     def should_unsub_via_disco(self):
         self.stomp.subscribed = True

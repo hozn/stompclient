@@ -69,7 +69,7 @@ class WhenBuildingFrames(DingusTestCase(Frame)):
 
         assert self.frame.command is not None
         assert self.frame.headers is not None
-        assert '\x00' in this_frame.as_string(),this_frame
+        assert '\x00' in this_frame.as_string()
 
     def should_build_frame_with_body(self):
         headers = {'destination':'/queue/nose_test',
@@ -120,7 +120,7 @@ class WhenParsingFrames(DingusTestCase(Frame)):
         command_str = 'CONNECT\nsession:ID:nose-session123'
         command     = self.frame.parse_command(command_str)
     
-        assert isinstance(command,type('')), command
+        assert isinstance(command,type(''))
 
     def should_set_bytes_message(self):
         my_frame = Frame()
