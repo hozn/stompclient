@@ -2,7 +2,7 @@
 import socket
 import random
 
-class Frame:
+class Frame(object):
     """Build and manage a STOMP Frame.
 
     This is useful for connecting to and communicating with
@@ -33,12 +33,12 @@ class Frame:
         self.my_name  = socket.gethostbyname(socket.gethostname())
         self.sock     = sock
 
-    def connect(self,sock):
+    def connect(self,sock, conf):
         """Connect to the STOMP server, get session id
         >>> frameobj.connect(sock)
         """
         self.sock = sock
-        frame = self.build_frame({'command':'CONNECT','headers':{}})
+        frame = self.build_frame({'command':'CONNECT','headers':conf})
         self.send_frame(frame.as_string())
         self._set_session()
 
@@ -59,7 +59,7 @@ class Frame:
         self.body    = args.get('body')
         if want_receipt:
             receipt_stamp = str(random.randint(0,10000000))
-            self.headers['receipt'] = self.session.get('session') + "-" + receipt_stamp
+            self.headers['receipt'] = self.session.get('session') + "_" + receipt_stamp
         return self
 
     def as_string(self):

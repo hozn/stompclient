@@ -11,7 +11,7 @@ class NotConnectedError(Exception):
     def __str__(self):
         return repr(self.value)
 
-class Stomp:
+class Stomp(object):
     """Dead simple Python STOMP client library
 
     This is useful for connecting to and communicating with
@@ -78,7 +78,7 @@ class Stomp:
         """
         try:
             self.sock.connect((self.host,self.port))
-            self.frame.connect(self.sock)
+            self.frame.connect(self.sock, conf)
             self.connected = True
         except (socket.error,socket.timeout), err:
             print "Cannot connect to %s on port %d" %(self.host,self.port)
