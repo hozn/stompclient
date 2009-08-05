@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import socket
 import random
+from pprint import pformat
 
 class Frame(object):
     """Build and manage a STOMP Frame.
@@ -21,7 +22,7 @@ class Frame(object):
     </connector>
 
     """
-    def __init__(self,sock=None):
+    def __init__(self,sock=None, debug=False):
         """Initialize Frame object
         Passing a socket object is optional
         >>> frameobj = Frame(socket)
@@ -32,12 +33,15 @@ class Frame(object):
         self.session  = None
         self.my_name  = socket.gethostbyname(socket.gethostname())
         self.sock     = sock
+        self.debug    = debug
 
     def connect(self,sock, conf):
         """Connect to the STOMP server, get session id
         >>> frameobj.connect(sock)
         """
         self.sock = sock
+        if not conf:
+            conf = {}
         frame = self.build_frame({'command':'CONNECT','headers':conf})
         self.send_frame(frame.as_string())
         self._set_session()
@@ -59,7 +63,7 @@ class Frame(object):
         self.body    = args.get('body')
         if want_receipt:
             receipt_stamp = str(random.randint(0,10000000))
-            self.headers['receipt'] = self.session.get('session') + "_" + receipt_stamp
+            self.headers['receipt'] = self.session.get('session') + "-" + receipt_stamp
         return self
 
     def as_string(self):
@@ -72,7 +76,7 @@ class Frame(object):
         body    = self.body
         frame   = "%s\n" % command
         
-        headers['x-client'] = self.my_name
+        headers['x_client'] = self.my_name
 
         bytes_message = False
         if 'bytes_message' in headers:
@@ -97,6 +101,11 @@ class Frame(object):
 
         while True:
             line = self._getline()
+            if self.debug:
+                print "Received: " +  '=' * 20
+                print line
+                print '-' * 20
+
             command = self.parse_command(line)
             line = line[len(command)+1:]
             headers_str, body = line.split('\n\n')
@@ -127,11 +136,16 @@ class Frame(object):
             headers[key] = value
         return headers
 
-    def send_frame(self,frame):
+    def send_frame(self,frame, debug=False):
         """Send frame to server, get receipt if needed
         >>> frameobj.send_frame(frame)
         """
+        if debug:
+            print "Sending: " +  '=' * 20
+            print frame
+            print '-' * 20
         self.sock.sendall(frame)
+
         if 'receipt' in self.headers:
             frame = self.parse_frame()
             return frame
@@ -146,3 +160,6 @@ class Frame(object):
         while not buffer.endswith('\x00\n'):
             buffer += self.sock.recv(1)
         return buffer[:-2]
+
+    def __repr__(self):
+        return "<Frame %s>" % pformat(self.headers)

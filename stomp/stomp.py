@@ -34,7 +34,7 @@ class Stomp(object):
         <serverTransport uri="stomp://localhost:61613"/>
     </connector>
     """
-    def __init__(self,hostname,port):
+    def __init__(self,hostname,port, debug=False):
         """Initialize Stomp object
         Also accepts arguments needed to build the TCP connection.
         
@@ -46,7 +46,9 @@ class Stomp(object):
         self.sock        = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._subscribed = None
         self._connected  = None
-        self.frame       = Frame()
+        self.debug       = debug
+        self.frame       = Frame(debug=self.debug)
+
 
     def _get_subscribed(self):
         return self._subscribed
@@ -244,5 +246,9 @@ class Stomp(object):
         >>> stomp.send_frame(frame)
         """
         self._is_connected()
-        frame = self.frame.send_frame(frame.as_string())
+        frame = self.frame.send_frame(frame.as_string(), self.debug)
         return frame
+
+    def __repr__(self):
+        return "<Stomp %s:%s connected:%s>" % (self.host, self.port, self._is_connected())
+
