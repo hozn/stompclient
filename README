@@ -1,0 +1,26 @@
+Dead simple Python STOMP client library
+
+    This is useful for connecting to and communicating with
+    Apache ActiveMQ, an open source Java Message Service (JMS)
+    message broker.
+
+    The majority of the methods available take a single argument; a dictionary.
+    This dictionary should contain the necessary bits you need
+    to pass to the STOMP server.  It is outlined in each method
+    exactly what it needs to work.
+
+    For specifics on the protocol, see: http://stomp.codehaus.org/Protocol
+
+    This library is basically a Python implementation of Perl's Net::Stomp
+    See: http://search.cpan.org/dist/Net-Stomp/lib/Net/Stomp.pm
+
+    To enable the ActiveMQ Broker for Stomp add the following to the activemq.xml configuration:
+
+    <connector>
+        <serverTransport uri="stomp://localhost:61613"/>
+    </connector>
+
+
+See http://bitbucket.org/benjaminws/python-stomp/ for lastest code.
+
+See http://just-another.net/python-stomp for documentation
