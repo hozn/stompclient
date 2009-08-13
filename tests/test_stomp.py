@@ -2,8 +2,8 @@
 from dingus import Dingus, DingusTestCase, DontCare
 from unittest import TestCase
 import sys
-import stomp
-from stomp import Stomp
+import four
+from four import Stomp
 
 class WhenConnecting(DingusTestCase(Stomp)):
 
@@ -17,7 +17,7 @@ class WhenConnecting(DingusTestCase(Stomp)):
         self.stomp.connected = True
 
     def should_set_socket_opts(self):
-        assert stomp.stomp.socket.calls('socket',DontCare,DontCare)
+        assert four.stomp.socket.calls('socket',DontCare,DontCare)
 
     def should_connect(self):
         self.stomp.connect()
@@ -160,13 +160,13 @@ class WhenUsingProperties(TestCase):
 class WhenNotConnected(TestCase):
     def should_fail_to_send(self):
         mystomp = Stomp('localhost',99999)
-        self.failUnlessRaises(stomp.stomp.NotConnectedError, mystomp.send)
+        self.failUnlessRaises(four.NotConnectedError, mystomp.send)
 
     def should_raise_nc(self):
         mystomp = Stomp('localhost',99999)
         try:
             mystomp.send()
-        except stomp.stomp.NotConnectedError, err:
+        except four.NotConnectedError, err:
             assert str(err) == "'Not connected to STOMP server.'"
 
 class WhenSocketCantConnect(TestCase):

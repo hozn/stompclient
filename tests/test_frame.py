@@ -3,8 +3,8 @@ from dingus import Dingus, DingusTestCase, DontCare
 from unittest import TestCase
 import sys
 import socket
-from stomp import frame
-from stomp.frame import Frame
+from four import frame
+from four.frame import Frame
 
 class WhenSettingUp(DingusTestCase(Frame)):
 
