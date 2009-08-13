@@ -167,7 +167,9 @@ class WhenNotConnected(TestCase):
         try:
             mystomp.send()
         except four.NotConnectedError, err:
-            assert str(err) == "'Not connected to STOMP server.'"
+            assert True # Should raise not connected
+            return
+        assert False # Should raise not connected
 
 class WhenSocketCantConnect(TestCase):
     def should_fail_connect(self):

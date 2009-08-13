@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import sys,time
-from stomp import Stomp
+from four import Stomp
 from optparse import OptionParser
 
 def consume(host,port,queue,num=None):
