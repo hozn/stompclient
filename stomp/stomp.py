@@ -229,7 +229,7 @@ class Stomp:
         ...     stomp.ack(frame)
         """
         self._is_connected()
-        frame = self.frame.parse_frame(nb=nonblocking)
+        frame = self.frame.get_message(nb=nonblocking)
         return frame
 
     def poll(self):

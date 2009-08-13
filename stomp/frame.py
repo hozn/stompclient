@@ -2,8 +2,29 @@
 import socket
 import random
 from errno import EAGAIN
+from Queue import Queue
+from Queue import Empty as QueueEmpty
 
-class Frame:
+
+class IntermediateMessageQueue(object):
+
+    def __init__(self):
+        self._queue = Queue()
+
+
+    def put(self, frame, nb=False):
+        if "destination" not in frame.headers:
+            return
+        self._queue.put(frame)
+
+    def get(self, frame, nb=False):
+        try:
+            return self._queue.get_nowait()
+        except QueueEmpty:
+            return frame.parse_frame(nb=nb)
+
+
+class Frame(object):
     """Build and manage a STOMP Frame.
 
     This is useful for connecting to and communicating with
@@ -33,6 +54,8 @@ class Frame:
         self.session  = None
         self.my_name  = socket.gethostbyname(socket.gethostname())
         self.sock     = sock
+        self.iqueue   = IntermediateMessageQueue()
+        self.rqueue   = Queue()
 
     def connect(self,sock):
         """Connect to the STOMP server, get session id
@@ -44,7 +67,7 @@ class Frame:
         self._set_session()
 
     def _set_session(self):
-        this_frame = self.parse_frame()
+        this_frame = self.get_reply()
         self.session = this_frame.headers
 
     def build_frame(self,args,want_receipt=False):
@@ -88,6 +111,29 @@ class Frame:
         frame += "\n%s\x00" % body
         return frame
 
+    def get_message(self, nb=False):
+        while True:
+            frame = self.iqueue.get(self, nb=nb)
+            if not frame and nb:
+                return None
+            if frame.command == "MESSAGE":
+                return frame
+            else:
+                self.rqueue.put(frame)
+
+    def get_reply(self, nb=False):
+        while True:
+            try:
+                return self.rqueue.get_nowait()
+            except QueueEmpty:
+                frame = self.parse_frame(nb=nb)
+                if not frame and nb:
+                    return None
+                if frame.command == "MESSAGE":
+                    self.iqueue.put(frame)
+                else:
+                    self.rqueue.put(frame)
+                    
     def parse_frame(self, nb=False):
         """Parse data from socket
 
@@ -106,6 +152,8 @@ class Frame:
             line = self._getline(nb=nb)
             if not line:
                 return
+            #import sys
+            #sys.stderr.write("LINE: %s" % line)
 
             command = self.parse_command(line)
             line = line[len(command)+1:]
@@ -141,9 +189,11 @@ class Frame:
         """Send frame to server, get receipt if needed
         >>> frameobj.send_frame(frame)
         """
+        #import sys
+        #sys.stderr.write("FRAME: %s\n" % frame)
         self.sock.sendall(frame)
         if 'receipt' in self.headers:
-            frame = self.parse_frame()
+            frame = self.get_reply()
             return frame
         else:
             return None 

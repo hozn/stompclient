@@ -121,7 +121,7 @@ class WhenConsumingMessages(DingusTestCase(Stomp)):
 
     def should_receive_and_ack(self):
         this_frame = self.stomp.receive_frame()
-        assert self.stomp.frame.calls('parse_frame')
+        assert self.stomp.frame.calls('get_message')
 
         self.stomp.ack(this_frame)
         built_frame = self.frame.calls('build_frame',DontCare).one()
