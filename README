@@ -13,12 +13,6 @@ exactly what it needs to work.
 
 For specifics on the protocol, see the `STOMP protocol specification`_.
 
-.. _`ActiveMQ`: http://activemq.apache.org/
-.. _`Java Message Service`: http://java.sun.com/products/jms/
-.. _`STOMP`: http://stomp.codehaus.org/
-.. _`STOMP protocol specification`: http://stomp.codehaus.org/Protocol
-.. _`Net::Stomp`: http://search.cpan.org/perldoc?Net::Stomp
-
 This library is basically a Python implementation of Perl's `Net::Stomp`_.
 
 To enable the `ActiveMQ`_ Broker for `STOMP`_ add the following to the
@@ -29,3 +23,9 @@ To enable the `ActiveMQ`_ Broker for `STOMP`_ add the following to the
     </connector>
 
 See http://bitbucket.org/asksol/four/ for latest code.
+
+.. _`ActiveMQ`: http://activemq.apache.org/
+.. _`Java Message Service`: http://java.sun.com/products/jms/
+.. _`STOMP`: http://stomp.codehaus.org/
+.. _`STOMP protocol specification`: http://stomp.codehaus.org/Protocol
+.. _`Net::Stomp`: http://search.cpan.org/perldoc?Net::Stomp
