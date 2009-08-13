@@ -1,5 +1,6 @@
 import socket
 from four.frame import Frame
+from functools import wraps
 
 
 class NotConnectedError(Exception):
@@ -25,13 +26,12 @@ class Stomp(object):
     ConnectionTimeoutError = ConnectionTimeoutError
     NotConnectedError = NotConnectedError
 
-
     def __init__(self, hostname, port=61613):
         self.host = hostname
         self.port = port
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._subscribed = None
-        self._connected  = None
+        self._connected = None
         self.frame = Frame()
 
     def connect(self):
@@ -70,13 +70,15 @@ class Stomp(object):
             ...     stomp.send({'destination': '/queue/foo',
             ...                 'body': 'Testing',
             ...                 'persistent': 'true'})
+
         """
-        self._is_connected()
+        self._connected_or_raise()
         body = conf['body']
         del conf['body']
-        frame = self.frame.build_frame({'command':'SEND',
-                                        'headers':conf,
-                                        'body':body}, want_receipt=True)
+        frame = self.frame.build_frame({'command': 'SEND',
+                                        'headers': conf,
+                                        'body': body},
+                                        want_receipt=True)
         frame = self.send_frame(frame)
         return frame
 
@@ -92,13 +94,13 @@ class Stomp(object):
             >>> stomp.subscribe({'destination':'/queue/foo',
         ...                      'ack':'client'})
         """
-        self._is_connected()
+        self._connected_or_raise()
         frame = self.frame.build_frame({'command': 'SUBSCRIBE',
-                                        'headers':conf})
+                                        'headers': conf})
         self.send_frame(frame)
         self.subscribed = conf.get('destination')
 
-    def begin(self,conf=None):
+    def begin(self, conf=None):
         """Begin transaction.
 
         You will need to pass any headers your STOMP server likes.
@@ -109,7 +111,7 @@ class Stomp(object):
 
             >>> stomp.begin({'transaction':'<randomish_hash_like_thing>'})
         """
-        self._is_connected()
+        self._connected_or_raise()
         frame = self.frame.build_frame({'command': 'BEGIN',
                                         'headers': conf})
         self.send_frame(frame)
@@ -126,9 +128,9 @@ class Stomp(object):
             >>> stomp.commit({'transaction':'<randomish_hash_like_thing>'})
 
         """
-        self._is_connected()
+        self._connected_or_raise()
         frame = self.frame.build_frame({'command': 'COMMIT',
-                                        'headers':conf})
+                                        'headers': conf})
         self.send_frame(frame)
 
     def abort(self, conf=None):
@@ -139,7 +141,7 @@ class Stomp(object):
             >>> stomp.abort({'transaction':'<randomish_hash_like_thing>'})
 
         """
-        self._is_connected()
+        self._connected_or_raise()
         frame = self.frame.build_frame({'command': 'ABORT',
                                         'headers': conf})
         self.send_frame(frame)
@@ -153,10 +155,10 @@ class Stomp(object):
 
         >>> stomp.unsubscribe({'destination':'/queue/foo'})
         """
-        self._is_connected()
+        self._connected_or_raise()
         if conf is None:
             conf = {}
-        frame = self.frame.build_frame({'command': 'UNSUBSCRIBE', 
+        frame = self.frame.build_frame({'command': 'UNSUBSCRIBE',
                                         'headers': conf})
         self.send_frame(frame)
         self.subscribed = None
@@ -173,7 +175,7 @@ class Stomp(object):
             ...     stomp.ack(frame)
 
         """
-        self._is_connected()
+        self._connected_or_raise()
         message_id = frame.headers.get('message-id')
         self.send_action("ACK", message_id=message_id)
 
@@ -186,7 +188,7 @@ class Stomp(object):
 
     def receive_frame(self, nonblocking=False):
         """Get a frame from the STOMP server
-        
+
         :keyword nonblocking: By default this function waits forever
             until there is a message to be received, however, in non-blocking
             mode it returns ``None`` if there is currently no message
@@ -211,7 +213,7 @@ class Stomp(object):
             ...     # no messages yet.
 
         """
-        self._is_connected()
+        self._connected_or_raise()
         return self.frame.get_message(nb=nonblocking)
 
     def poll(self):
@@ -227,37 +229,36 @@ class Stomp(object):
 
             >>> from four import Frame
             >>> frame = Frame().build_frame({
-            ...    "command": "DISCONNECT", 
+            ...    "command": "DISCONNECT",
             ...    "headers": {},
             ... })
             >>> stomp.send_frame(frame)
 
         """
-        self._is_connected()
+        self._connected_or_raise()
         frame = self.frame.send_frame(frame.as_string())
         return frame
-    
-    def _is_connected(self):
+
+    def _connected_or_raise(self):
         if not self.connected:
             raise self.NotConnectedError("Not connected to STOMP server.")
 
     def _get_subscribed(self):
         return self._subscribed
 
-    def _set_subscribed(self,sub):
+    def _set_subscribed(self, sub):
         self._subscribed = sub
 
     # XXX This is a problem, because we can be subscribed to more than
     # one topic/queue at the same time.
-    subscribed = property(_get_subscribed, _set_subscribed, 
+    subscribed = property(_get_subscribed, _set_subscribed,
                           "The queue or topic currently subscribed to")
-    
+
     def _get_connected(self):
         return self._connected
-    
-    def _set_connected(self,conn):
+
+    def _set_connected(self, conn):
         self._connected = conn
 
     connected = property(_get_connected, _set_connected,
                          "Connection status.")
-
