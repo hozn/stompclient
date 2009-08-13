@@ -6,3 +6,5 @@
 ^dist$
 ^stomp.egg-info$
 ^push_to_bitbucket$
+\..*sw[po]
+.*egg-info
