@@ -1,95 +1,92 @@
 #!/usr/bin/env python
-import sys,time
+import sys
+import time
 from four import Stomp
 from optparse import OptionParser
 
-def consume(host,port,queue,num=None):
+
+def consume(host, port, queue, num=None):
     try:
-        stomp = Stomp(host,port)
+        stomp = Stomp(host, port)
         stomp.connect()
     except:
-        print "Cannot connect"
+        print("Cannot connect")
         raise
-    
-    stomp.subscribe({'destination':queue,
-                     'ack':'client'})
+
+    stomp.subscribe({'destination': queue, 'ack': 'client'})
 
     if not num:
         while True:
             try:
                 frame = stomp.receive_frame()
                 stomp.ack(frame)
-                print frame.headers.get('message-id')
-                print frame.body
+                print(frame.headers.get('message-id'))
+                print(frame.body)
             except KeyboardInterrupt:
                 stomp.disconnect()
                 break
     else:
-        for i in xrange(0,num):
+        for i in xrange(0, num):
             try:
                 frame = stomp.receive_frame()
                 stomp.ack(frame)
-                print frame.headers.get('message-id')
-                print frame.body
+                print(frame.headers.get('message-id'))
+                print(frame.body)
             except KeyboardInterrupt:
                 stomp.disconnect()
                 break
         stomp.disconnect()
 
-def produce(host,port,queue,num=1000):
+
+def produce(host, port, queue, num=1000):
     try:
-        stomp = Stomp(host,port)
+        stomp = Stomp(host, port)
         stomp.connect()
     except:
-        print "Cannot connect"
+        print("Cannot connect")
         raise
-    for i in xrange(0,num):
-        print "Message #%d" % i
-        this_frame = stomp.send({'destination':queue,
-                                 'body':'Testing %d' % i,
-                                 'persistent':'true'})
-        print "Receipt: %s" % this_frame.headers.get('receipt-id')
+
+    for i in xrange(0, num):
+        print("Message #%d" % i)
+        this_frame = stomp.send({'destination': queue,
+                                 'body': 'Testing %d' % i,
+                                 'persistent': 'true'})
+        print("Receipt: %s" % this_frame.headers.get('receipt-id'))
 
     stomp.disconnect()
 
 if __name__ == '__main__':
     parser = OptionParser()
-    parser.add_option('-H', '--host', action='store', 
+    parser.add_option('-H', '--host', action='store',
                       type='string', dest='host', help='hostname')
-    parser.add_option('-p', '--port', action='store', 
+    parser.add_option('-p', '--port', action='store',
                       type='int', dest='port', help='port')
-    parser.add_option('-q', '--queue', action='store', 
+    parser.add_option('-q', '--queue', action='store',
                       type='string', dest='queue', help='destination queue')
-    parser.add_option('-P', '--produce', action='store_true', 
+    parser.add_option('-P', '--produce', action='store_true',
                       default=False, dest='produce', help='produce messages')
-    parser.add_option('-c', '--consume', action='store_true', 
+    parser.add_option('-c', '--consume', action='store_true',
                       default=False, dest='consume', help='consume messages')
     parser.add_option('-n', '--number', action='store',
-                      type='int', dest='number', 
+                      type='int', dest='number',
                       help='produce or consume NUMBER messages')
 
-    (options,args) = parser.parse_args()
+    options, args = parser.parse_args()
 
     if not options.host:
-        print "Host name is required!"
+        print("Host name is required!")
         parser.print_help()
-        raise SystemExit
+        sys.exit(1)
     if not options.port:
-        print "Port is required!"
+        print("Port is required!")
         parser.print_help()
-        raise SystemExit
+        sys.exit(1)
     if not options.queue:
-        print "Queue name is required!"
+        print("Queue name is required!")
         parser.print_help()
-        raise SystemExit
+        sys.exit(1)
 
     if options.produce:
-        if options.number:
-            produce(options.host,options.port,options.queue,options.number)
-        else:
-            produce(options.host,options.port,options.queue)
+        produce(options.host, options.port, options.queue, options.number)
     elif options.consume:
-        if options.number:
-            consume(options.host,options.port,options.queue,options.number)
-        else:
-            consume(options.host,options.port,options.queue)
+        consume(options.host, options.port, options.queue, options.number)
