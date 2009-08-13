@@ -13,6 +13,8 @@ class IntermediateMessageQueue(object):
 
 
     def put(self, frame, nb=False):
+        import sys
+        sys.stderr.write("PUT MESSAGE ON Q: %s" % frame)
         if "destination" not in frame.headers:
             return
         self._queue.put(frame)
@@ -208,6 +210,7 @@ class Frame(object):
         self.sock.setblocking(not nb)
         try:
             buffer = ''
+            partial = ''
             while not buffer.endswith('\x00\n'):
                 try:
                     partial = self.sock.recv(1)

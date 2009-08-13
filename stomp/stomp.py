@@ -12,7 +12,7 @@ class NotConnectedError(Exception):
     def __str__(self):
         return repr(self.value)
 
-class Stomp:
+class Stomp(object):
     """Dead simple Python STOMP client library
 
     This is useful for connecting to and communicating with
