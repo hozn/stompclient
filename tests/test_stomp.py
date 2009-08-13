@@ -174,4 +174,5 @@ class WhenNotConnected(TestCase):
 class WhenSocketCantConnect(TestCase):
     def should_fail_connect(self):
         self.stomp = Stomp('localhost',99999)
-        self.failUnlessRaises(SystemExit,self.stomp.connect)
+        self.failUnlessRaises(self.stomp.ConnectionError,
+                self.stomp.connect)

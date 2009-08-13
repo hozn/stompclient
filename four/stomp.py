@@ -10,6 +10,10 @@ class ConnectionError(socket.error):
     """Couldn't connect to the STOMP server."""
 
 
+class ConnectionTimeoutError(socket.timeout):
+    """Timed-out while establishing connection to the STOMP server."""
+
+
 class Stomp(object):
     """STOMP Client.
 
@@ -17,6 +21,11 @@ class Stomp(object):
     :param port: The port to use. (default ``61613``)
 
     """
+    ConnectionError = ConnectionError
+    ConnectionTimeoutError = ConnectionTimeoutError
+    NotConnectedError = NotConnectedError
+
+
     def __init__(self, hostname, port=61613):
         self.host = hostname
         self.port = port
@@ -31,10 +40,10 @@ class Stomp(object):
             self.sock.connect((self.host, self.port))
             self.frame.connect(self.sock)
             self.connected = True
-        except (socket.error, socket.timeout), err:
-            print "Cannot connect to %s on port %d" %(self.host,self.port)
-            print "Caught error: %s" % err
-            raise SystemExit
+        except socket.error, exc:
+            raise self.ConnectionError(*exc.args)
+        except socket.timeout, exc:
+            raise self.ConnectionTimeoutError(*exc.args)
 
     def disconnect(self, conf=None):
         """Disconnect from the server."""
@@ -230,7 +239,7 @@ class Stomp(object):
     
     def _is_connected(self):
         if not self.connected:
-            raise NotConnectedError("Not connected to STOMP server.")
+            raise self.NotConnectedError("Not connected to STOMP server.")
 
     def _get_subscribed(self):
         return self._subscribed
