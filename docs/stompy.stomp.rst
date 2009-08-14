@@ -1,10 +1,10 @@
 =====================================
-Client - four.stomp
+Client - stompy.stomp
 =====================================
 
-.. currentmodule:: four.stomp
+.. currentmodule:: stompy.stomp
 
-.. automodule:: four.stomp
+.. automodule:: stompy.stomp
     :members:
 
 

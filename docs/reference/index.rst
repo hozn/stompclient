@@ -8,5 +8,5 @@
 .. toctree::
     :maxdepth: 2
   
-    four.stomp
-    four.frame 
+    stompy.stomp
+    stompy.frame 

@@ -2,8 +2,8 @@
 from dingus import Dingus, DingusTestCase, DontCare
 from unittest import TestCase
 import sys
-import four
-from four import Stomp
+import stompy
+from stompy import Stomp
 
 
 class WhenConnecting(DingusTestCase(Stomp)):
@@ -18,7 +18,7 @@ class WhenConnecting(DingusTestCase(Stomp)):
         self.stomp.connected = True
 
     def should_set_socket_opts(self):
-        assert four.stomp.socket.calls('socket', DontCare, DontCare)
+        assert stompy.stomp.socket.calls('socket', DontCare, DontCare)
 
     def should_connect(self):
         self.stomp.connect()
@@ -162,14 +162,14 @@ class WhenNotConnected(TestCase):
 
     def should_fail_to_send(self):
         mystomp = Stomp('localhost', 99999)
-        self.failUnlessRaises(four.NotConnectedError, mystomp.send,
+        self.failUnlessRaises(stompy.NotConnectedError, mystomp.send,
                               {"body": "f"})
 
     def should_raise_nc(self):
         mystomp = Stomp('localhost', 99999)
         try:
             mystomp.send({"body": "Vandelay Industries"})
-        except four.NotConnectedError, err:
+        except stompy.NotConnectedError, err:
             assert True # Should raise not connected
             return
         assert False # Should raise not connected

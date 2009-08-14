@@ -20,7 +20,7 @@ import os
 # is relative to the documentation root, use os.path.abspath to make it
 # absolute, like shown here.
 sys.path.insert(0, "../")
-from four import distmeta
+from stompy import distmeta
 
 # General configuration
 # ---------------------

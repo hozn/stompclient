@@ -1,5 +1,5 @@
 ==========================================
- four (4/4) - Python STOMP client library
+ stompy - Python STOMP client library
 ==========================================
 
 This is useful for connecting to and communicating with
@@ -22,7 +22,7 @@ To enable the `ActiveMQ`_ Broker for `STOMP`_ add the following to the
         <serverTransport uri="stomp://localhost:61613"/>
     </connector>
 
-See http://bitbucket.org/asksol/four/ for latest code.
+See http://bitbucket.org/asksol/python-stomp/ for latest code.
 
 .. _`ActiveMQ`: http://activemq.apache.org/
 .. _`Java Message Service`: http://java.sun.com/products/jms/

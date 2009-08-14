@@ -1,5 +1,5 @@
 import socket
-from four.frame import Frame
+from stompy.frame import Frame
 from functools import wraps
 
 
@@ -152,7 +152,7 @@ class Stomp(object):
     def ack(self, frame):
         """Acknowledge receipt of a message
 
-        :param: A :class:`four.frame.Frame` instance.
+        :param: A :class:`stompy.frame.Frame` instance.
 
         Example
 
@@ -201,11 +201,11 @@ class Stomp(object):
     def send_frame(self, frame):
         """Send a custom frame to the STOMP server
 
-        :param frame: A :class:`four.frame.Frame` instance.
+        :param frame: A :class:`stompy.frame.Frame` instance.
 
         Example
 
-            >>> from four import Frame
+            >>> from stompy import Frame
             >>> frame = Frame().build_frame({
             ...    "command": "DISCONNECT",
             ...    "headers": {},

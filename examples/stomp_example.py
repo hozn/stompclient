@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import sys
 import time
-from four import Stomp
+from stompy import Stomp
 from optparse import OptionParser
 
 

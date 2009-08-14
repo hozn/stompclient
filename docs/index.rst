@@ -1,5 +1,5 @@
 ===============================================
- Four 4/4 - Python STOMP Client  Documentation
+ stompy - Python STOMP Client  Documentation
 ===============================================
 
 Contents:

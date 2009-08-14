@@ -1,12 +1,12 @@
 from setuptools import setup, find_packages
-from four import distmeta
+from stompy import distmeta
 
-setup(name='four',
+setup(name='stompy',
       version=distmeta.__version__,
       description=distmeta.__doc__,
       author=distmeta.__author__,
       author_email=distmeta.__contact__,
-      packages = ['four'],
+      packages = ['stompy'],
       license='BSD',
       url=distmeta.__homepage__,
       keywords='stomp activemq jms messaging',
