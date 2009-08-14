@@ -147,10 +147,10 @@ class Client(object):
         self.stomp.commit({"transaction": self._current_transaction})
         self._current_transaction = None
 
-    def ack(self, message):
+    def ack(self, frame):
         """Acknowledge message.
         
-        :param message: The message to acknowledge.
+        :param frame: The message to acknowledge.
         
         """
         return self.stomp.ack(frame)
