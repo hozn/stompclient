@@ -132,8 +132,8 @@ class WhenConsumingMessages(DingusTestCase(Stomp)):
         assert self.frame.calls('send_frame',send_args.as_string())
 
     def should_unsubscribe(self):
-        self.stomp.unsubscribe()
-        built_frame = self.frame.calls('build_frame',DontCare).one()
+        self.stomp.unsubscribe({'destination': '/queue/nose-test'})
+        built_frame = self.frame.calls('build_frame', DontCare).one()
         built_frame_args = built_frame.args[0]
         send_args = built_frame[3]
 
@@ -142,14 +142,14 @@ class WhenConsumingMessages(DingusTestCase(Stomp)):
         assert not self.stomp.subscribed
 
     def should_unsub_via_disco(self):
-        self.stomp.subscribed = True
+        self.stomp._subscribed_to["/queue/nose-test"] = True
         self.stomp.disconnect()
         assert not self.stomp.subscribed
 
 class WhenUsingProperties(TestCase):
     def should_set_sub(self):
         mystomp = Stomp('localhost',99999)
-        mystomp._set_subscribed({'destination':'/queue/nose_test'})
+        mystomp._subscribed_to['/queue/nose_test'] = True
         assert mystomp.subscribed is not None
 
     def should_set_son(self):

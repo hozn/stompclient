@@ -30,6 +30,7 @@ class Stomp(object):
         self.host = hostname
         self.port = port
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._subscribed_to = {}
         self._subscribed = None
         self._connected = None
         self.frame = Frame()
@@ -47,10 +48,9 @@ class Stomp(object):
 
     def disconnect(self, conf=None):
         """Disconnect from the server."""
-        if self.subscribed:
-            self.unsubscribe({'destination': self.subscribed})
-        if conf is None:
-            conf = {}
+        conf = conf or {}
+        for destination in self._subscribed_to.keys():
+            self.unsubscribe({'destination': destination})
         frame = self.frame.build_frame({'command': 'DISCONNECT',
                                         'headers': conf})
         self.send_frame(frame)
@@ -98,7 +98,8 @@ class Stomp(object):
         frame = self.frame.build_frame({'command': 'SUBSCRIBE',
                                         'headers': conf})
         self.send_frame(frame)
-        self.subscribed = conf.get('destination')
+        destination = conf["destination"]
+        self._subscribed_to[destination] = True
 
     def begin(self, conf=None):
         """Begin transaction.
@@ -161,7 +162,8 @@ class Stomp(object):
         frame = self.frame.build_frame({'command': 'UNSUBSCRIBE',
                                         'headers': conf})
         self.send_frame(frame)
-        self.subscribed = None
+        destination = conf["destination"]
+        self._subscribed_to.pop(destination, None)
 
     def ack(self, frame):
         """Acknowledge receipt of a message
@@ -243,16 +245,14 @@ class Stomp(object):
         if not self.connected:
             raise self.NotConnectedError("Not connected to STOMP server.")
 
-    def _get_subscribed(self):
-        return self._subscribed
+    @property
+    def subscribed(self):
+        """**DEPRECATED** The queue or topic currently subscribed to."""
+        as_list = self._subscribed_to.keys()
+        if not as_list:
+            return
+        return as_list[0]
 
-    def _set_subscribed(self, sub):
-        self._subscribed = sub
-
-    # XXX This is a problem, because we can be subscribed to more than
-    # one topic/queue at the same time.
-    subscribed = property(_get_subscribed, _set_subscribed,
-                          "The queue or topic currently subscribed to")
 
     def _get_connected(self):
         return self._connected
