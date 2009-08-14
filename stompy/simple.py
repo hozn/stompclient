@@ -72,6 +72,7 @@ class Client(object):
         :returns: The resulting :class:`stompy.frame.Frame` instance.
 
         """
+        persistent = "true" if persistent else "false"
         conf = self._make_conf(conf, body=item, destination=destination,
                                persistent=persistent)
                   
