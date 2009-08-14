@@ -165,9 +165,9 @@ class Frame(object):
         command = self.parse_command(line)
         line = line[len(command)+1:]
         headers_str, _, body = line.partition("\n\n")
-        if not headers_str or not body:
+        if not headers_str:
             raise UnknownBrokerResponseError(
-                    "Received: (%s)\nTraceback:\n%s" % line)
+                    "Received: (%s)" % line)
         headers = self.parse_headers(headers_str)
 
         if 'content-length' in headers:
