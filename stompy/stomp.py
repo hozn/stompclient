@@ -48,10 +48,12 @@ class Stomp(object):
 
     def disconnect(self, conf=None):
         """Disconnect from the server."""
-        conf = conf or {}
-        for destination in self._subscribed_to.keys():
-            self.unsubscribe({"destination": destination})
-        self._send_command("DISCONNECT", conf)
+        try:
+            for destination in self._subscribed_to.keys():
+                self.unsubscribe({"destination": destination})
+            self._send_command("DISCONNECT", conf)
+        except self.NotConnectedError:
+            pass
         self.sock.shutdown(0)
         self.connected = False
 
