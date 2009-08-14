@@ -32,7 +32,7 @@ class Stomp(object):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._subscribed_to = {}
         self._subscribed = None
-        self._connected = None
+        self.connected = None
         self.frame = Frame()
 
     def connect(self):
@@ -40,21 +40,20 @@ class Stomp(object):
         try:
             self.sock.connect((self.host, self.port))
             self.frame.connect(self.sock)
-            self.connected = True
         except socket.error, exc:
             raise self.ConnectionError(*exc.args)
         except socket.timeout, exc:
             raise self.ConnectionTimeoutError(*exc.args)
+        self.connected = True
 
     def disconnect(self, conf=None):
         """Disconnect from the server."""
         conf = conf or {}
         for destination in self._subscribed_to.keys():
-            self.unsubscribe({'destination': destination})
-        frame = self.frame.build_frame({'command': 'DISCONNECT',
-                                        'headers': conf})
-        self.send_frame(frame)
+            self.unsubscribe({"destination": destination})
+        self._send_command("DISCONNECT", conf)
         self.sock.shutdown(0)
+        self.connected = False
 
     def send(self, conf=None):
         """Send message to STOMP server
@@ -62,7 +61,7 @@ class Stomp(object):
         You'll need to pass the body and any other headers your
         STOMP server likes.
 
-        destination is *required*
+        destination is **required**
 
         In the case of ActiveMQ with persistence, you could do this:
 
@@ -72,15 +71,15 @@ class Stomp(object):
             ...                 'persistent': 'true'})
 
         """
-        self._connected_or_raise()
         body = conf['body']
         del conf['body']
-        frame = self.frame.build_frame({'command': 'SEND',
-                                        'headers': conf,
-                                        'body': body},
-                                        want_receipt=True)
-        frame = self.send_frame(frame)
+        frame = self._send_command("SEND", conf, extra={"body": body},
+                                   want_receipt=True)
         return frame
+
+    def _build_frame(self, *args, **kwargs):
+        self._connected_or_raise()
+        return self.frame.build_frame(*args, **kwargs)
 
     def subscribe(self, conf=None):
         """Subscribe to a given destination
@@ -94,11 +93,8 @@ class Stomp(object):
             >>> stomp.subscribe({'destination':'/queue/foo',
         ...                      'ack':'client'})
         """
-        self._connected_or_raise()
-        frame = self.frame.build_frame({'command': 'SUBSCRIBE',
-                                        'headers': conf})
-        self.send_frame(frame)
         destination = conf["destination"]
+        self._send_command("SUBSCRIBE", conf)
         self._subscribed_to[destination] = True
 
     def begin(self, conf=None):
@@ -112,10 +108,7 @@ class Stomp(object):
 
             >>> stomp.begin({'transaction':'<randomish_hash_like_thing>'})
         """
-        self._connected_or_raise()
-        frame = self.frame.build_frame({'command': 'BEGIN',
-                                        'headers': conf})
-        self.send_frame(frame)
+        self._send_command("BEGIN", conf)
 
     def commit(self, conf=None):
         """Commit transaction.
@@ -129,10 +122,8 @@ class Stomp(object):
             >>> stomp.commit({'transaction':'<randomish_hash_like_thing>'})
 
         """
-        self._connected_or_raise()
-        frame = self.frame.build_frame({'command': 'COMMIT',
-                                        'headers': conf})
-        self.send_frame(frame)
+        self._send_command("COMMIT", conf)
+
 
     def abort(self, conf=None):
         """Abort transaction.
@@ -142,10 +133,8 @@ class Stomp(object):
             >>> stomp.abort({'transaction':'<randomish_hash_like_thing>'})
 
         """
-        self._connected_or_raise()
-        frame = self.frame.build_frame({'command': 'ABORT',
-                                        'headers': conf})
-        self.send_frame(frame)
+        self._send_command("ABORT", conf)
+
 
     def unsubscribe(self, conf=None):
         """Unsubscribe from a given destination
@@ -156,13 +145,8 @@ class Stomp(object):
 
         >>> stomp.unsubscribe({'destination':'/queue/foo'})
         """
-        self._connected_or_raise()
-        if conf is None:
-            conf = {}
-        frame = self.frame.build_frame({'command': 'UNSUBSCRIBE',
-                                        'headers': conf})
-        self.send_frame(frame)
         destination = conf["destination"]
+        self._send_command("UNSUBSCRIBE", conf)
         self._subscribed_to.pop(destination, None)
 
     def ack(self, frame):
@@ -177,16 +161,8 @@ class Stomp(object):
             ...     stomp.ack(frame)
 
         """
-        self._connected_or_raise()
         message_id = frame.headers.get('message-id')
-        self.send_action("ACK", message_id=message_id)
-
-    def send_action(self, command, **headers):
-        headers = dict((key.replace("_", "-"), value)
-                            for key, value in headers.items())
-        frame = self.frame.build_frame({"command": command,
-                                        "headers": headers or {}})
-        self.send_frame(frame)
+        self._send_command("ACK", {"message-id": message_id})
 
     def receive_frame(self, nonblocking=False):
         """Get a frame from the STOMP server
@@ -240,6 +216,15 @@ class Stomp(object):
         self._connected_or_raise()
         frame = self.frame.send_frame(frame.as_string())
         return frame
+    
+    def _send_command(self, command, conf=None, extra=None, **kwargs):
+        conf = conf or {}
+        extra = extra or {}
+        frame_conf = {"command": command, "headers": conf}
+        frame_conf.update(extra)
+        frame = self._build_frame(frame_conf, **kwargs)
+        self.send_frame(frame)
+        return frame
 
     def _connected_or_raise(self):
         if not self.connected:
@@ -252,13 +237,3 @@ class Stomp(object):
         if not as_list:
             return
         return as_list[0]
-
-
-    def _get_connected(self):
-        return self._connected
-
-    def _set_connected(self, conn):
-        self._connected = conn
-
-    connected = property(_get_connected, _set_connected,
-                         "Connection status.")
