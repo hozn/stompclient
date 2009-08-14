@@ -47,7 +47,6 @@ class Frame(object):
     :keyword sock: An open socket to the STOMP server.
 
     """
-
     def __init__(self, sock=None):
         self.command = None
         self.headers = {}
@@ -220,3 +219,6 @@ class Frame(object):
         finally:
             self.sock.setblocking(nb)
         return buffer[:-2]
+
+    def __repr__(self):
+        return "<Frame %s>" % pformat(self.headers)

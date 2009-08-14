@@ -6,7 +6,6 @@ from functools import wraps
 class NotConnectedError(Exception):
     """No longer connected to the STOMP server."""
 
-
 class ConnectionError(socket.error):
     """Couldn't connect to the STOMP server."""
 
