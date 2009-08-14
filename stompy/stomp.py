@@ -71,9 +71,9 @@ class Stomp(object):
             ...                 'persistent': 'true'})
 
         """
-        body = conf['body']
-        del conf['body']
-        frame = self._send_command("SEND", conf, extra={"body": body},
+        headers = dict(conf)
+        body = headers.pop("body", "")
+        frame = self._send_command("SEND", headers, extra={"body": body},
                                    want_receipt=True)
         return frame
 
