@@ -6,6 +6,7 @@ from functools import wraps
 class NotConnectedError(Exception):
     """No longer connected to the STOMP server."""
 
+
 class ConnectionError(socket.error):
     """Couldn't connect to the STOMP server."""
 
@@ -124,7 +125,6 @@ class Stomp(object):
         """
         self._send_command("COMMIT", conf)
 
-
     def abort(self, conf=None):
         """Abort transaction.
 
@@ -134,7 +134,6 @@ class Stomp(object):
 
         """
         self._send_command("ABORT", conf)
-
 
     def unsubscribe(self, conf=None):
         """Unsubscribe from a given destination
@@ -216,7 +215,7 @@ class Stomp(object):
         self._connected_or_raise()
         frame = self.frame.send_frame(frame.as_string())
         return frame
-    
+
     def _send_command(self, command, conf=None, extra=None, **kwargs):
         conf = conf or {}
         extra = extra or {}
