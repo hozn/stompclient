@@ -5,6 +5,10 @@ from Queue import Queue
 from Queue import Empty as QueueEmpty
 
 
+class UnknownBrokerResponseError(Exception):
+    """An unexpected response was received from the broker."""
+
+
 class IntermediateMessageQueue(object):
     """Internal message queue that holds messages received by the server.
 
@@ -99,22 +103,21 @@ class Frame(object):
         command = self.command
         headers = self.headers
         body = self.body
-        frame = "%s\n" % command
-        headers['x-client'] = self.my_name
+
         bytes_message = False
         if 'bytes_message' in headers:
             bytes_message = True
             del headers['bytes_message']
             headers['content-length'] = len(body)
+        headers['x-client'] = self.my_name
 
         # Convert and append any existing headers to a string as the
         # protocol describes.
         headerparts = ("%s:%s\n" % (key, value)
                             for key, value in headers.iteritems())
-        frame += "".join(headerparts)
 
-        # Finally append the body with the EOF marker.
-        frame += "\n%s\x00" % body
+        # Frame is Command + Header + EOF marker.
+        frame = "%s\n%s\n%s\x00" % (command, "".join(headerparts), body)
 
         return frame
 
@@ -155,43 +158,37 @@ class Frame(object):
             >>> frameobj.parse_frame()
 
         """
-        command = None
-        body = None
-        headers = {}
+        line = self._getline(nb=nb)
+        if not line:
+            return
 
-        while True:
-            line = self._getline(nb=nb)
-            if not line:
-                return
+        command = self.parse_command(line)
+        line = line[len(command)+1:]
+        headers_str, _, body = line.partition("\n\n")
+        if not headers_str or not body:
+            raise UnknownBrokerResponseError(
+                    "Received: (%s)\nTraceback:\n%s" % line)
+        headers = self.parse_headers(headers_str)
 
-            command = self.parse_command(line)
-            line = line[len(command)+1:]
-            headers_str, body = line.split('\n\n')
-            headers = self.parse_headers(headers_str)
-
-            if 'content-length' in headers:
-                headers['bytes_message'] = True
-            break
+        if 'content-length' in headers:
+            headers['bytes_message'] = True
 
         frame = Frame(self.sock)
-        frame = frame.build_frame({'command': command,
-                                   'headers': headers,
-                                   'body': body})
-        return frame
+        return frame.build_frame({'command': command,
+                                  'headers': headers,
+                                  'body': body})
 
     def parse_command(self, str):
         """Parse command received from the server."""
         command = str.split('\n', 1)[0]
         return command
 
-    def parse_headers(self, str):
+    def parse_headers(self, headers_str):
         """Parse headers received from the servers and convert
         to a :class:`dict`."""
-        headers = {}
-        for line in str.split('\n'):
-            key, value = line.split(':', 1)
-            headers[key] = value
-        return headers
+        # george:constanza\nelaine:benes
+        # -> {"george": "constanza", "elaine": "benes"}
+        return dict(line.split(":", 1) for line in headers_str.split("\n"))
 
     def send_frame(self, frame):
         """Send frame to server, get receipt if needed."""
