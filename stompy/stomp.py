@@ -75,9 +75,8 @@ class Stomp(object):
         """
         headers = dict(conf)
         body = headers.pop("body", "")
-        frame = self._send_command("SEND", headers, extra={"body": body},
-                                   want_receipt=True)
-        return frame
+        return self._send_command("SEND", headers, extra={"body": body},
+                                  want_receipt=True)
 
     def _build_frame(self, *args, **kwargs):
         self._connected_or_raise()
@@ -225,7 +224,9 @@ class Stomp(object):
         frame_conf = {"command": command, "headers": conf}
         frame_conf.update(extra)
         frame = self._build_frame(frame_conf, **kwargs)
-        self.send_frame(frame)
+        reply = self.send_frame(frame)
+        if kwargs.get("want_receipt", False):
+            return reply
         return frame
 
     def _connected_or_raise(self):
