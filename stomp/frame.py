@@ -6,7 +6,7 @@ This is a mixture of code from the stomper project and the stompy project codeba
 import logging
 import re
 
-__authors__ = ['"Hans Lellelid" <hans@xmpl.org>', 'Ricky Iacovou (stomper)', '"Benjamin W. Smith" (stompy)']
+__authors__ = ['"Hans Lellelid" <hans@xmpl.org>', 'Ricky Iacovou (stomper)', 'Benjamin W. Smith (stompy)']
 __copyright__ = "Copyright 2010 Hans Lellelid, Copyright 2008 Ricky Iacovou, Copyright 2009 Benjamin W. Smith"
 __license__ = """Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,9 +19,6 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License."""
-
-# The version of the protocol we implement.
-STOMP_VERSION = '1.0'
 
 # STOMP Spec v1.0 valid commands:
 VALID_COMMANDS = [
@@ -77,9 +74,7 @@ class Frame(object):
         if cmd is not None:
             cmd = cmd.upper()
             if cmd not in VALID_COMMANDS:
-                raise FrameError("The cmd '%s' is not valid! It must be one of '%s' (STOMP v%s)." % (
-                    cmd, VALID_COMMANDS, STOMP_VERSION)
-                )
+                raise FrameError("The command '%s' is not valid; it must be one of %r" % (cmd, VALID_COMMANDS))
         self._cmd = cmd
     
     command = property(_get_cmd, _set_cmd)
@@ -222,8 +217,28 @@ class HeaderValue(object):
         return '<%s calculator=%s>' % (self.__class__.__name__, self.calc)
 
 
-## Convenience Frame subclasses
+## --------------------------------------------------------------------------------------
+## 
+## Convenience Frame subclasses for CLIENT communication.
+##
+## --------------------------------------------------------------------------------------
 
+class ConnectFrame(Frame):
+    """ A CONNECT client frame. """
+    
+    def __init__(self, login=None, passcode=None):
+        super(ConnectFrame, self).__init__('CONNECT')
+        if login:
+            self.headers['login'] = login
+        if passcode:
+            self.headers['passcode'] = passcode
+
+class DisconnectFrame(Frame):
+    """ A DISCONNECT client frame. """
+    
+    def __init__(self):
+        super(DisconnectFrame, self).__init__('DISCONNECT')
+        
 class SendFrame(Frame):
     """ A SEND client frame. """
     
@@ -339,21 +354,6 @@ class AckFrame(Frame):
 
             self.headers['transaction'] = transaction
 
-class ConnectFrame(Frame):
-    """ A CONNECT client frame. """
-    
-    def __init__(self, login=None, passcode=None):
-        super(ConnectFrame, self).__init__('CONNECT')
-        if login:
-            self.headers['login'] = login
-        if passcode:
-            self.headers['passcode'] = passcode
-
-class DisconnectFrame(Frame):
-    """ A DISCONNECT client frame. """
-    
-    def __init__(self):
-        super(DisconnectFrame, self).__init__('DISCONNECT')
 
  
 class FrameBuffer(object):
