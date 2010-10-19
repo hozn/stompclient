@@ -4,8 +4,8 @@ import threading
 
 from stomp.exceptions import ConnectionError, ConnectionTimeoutError
 
-__authors__ = ['"Hans Lellelid" <hans@xmpl.org>', 'Benjamin W. Smith (stompy)']
-__copyright__ = "Copyright 2010 Hans Lellelid, Copyright 2008 Ricky Iacovou, Copyright 2009 Benjamin W. Smith"
+__authors__ = ['"Hans Lellelid" <hans@xmpl.org>', 'Andy McCurdy (redis)']
+__copyright__ = "Copyright 2010 Hans Lellelid, Copyright 2010 Andy McCurdy"
 __license__ = """Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
