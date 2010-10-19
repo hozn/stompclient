@@ -157,8 +157,9 @@ class Stomp(object):
             pass
         self.connection.disconnect()
 
-    def send(self, conf=None):
-        """Send message to STOMP server
+    def send(self, frame):
+        """
+        Send frame to STOMP server
 
         You'll need to pass the body and any other headers your
         STOMP server likes.
@@ -176,10 +177,6 @@ class Stomp(object):
         headers = dict(conf)
         body = headers.pop("body", "")
         return self._send_command("SEND", headers, extra={"body": body}, want_receipt=True)
-
-    def _build_frame(self, *args, **kwargs):
-        self._connected_or_raise()
-        return self.frame.build_frame(*args, **kwargs)
 
     def subscribe(self, conf=None):
         """Subscribe to a given destination
