@@ -26,7 +26,7 @@ import logging
 import re
 import stomper
 
-from coilmq.frame import StompFrame
+from stomp.frame import Frame
 
 # regexp to check that the buffer starts with a command.
 command_re = re.compile('^(.+?)\n')
@@ -137,7 +137,7 @@ class StompFrameBuffer(object):
         # so 2 bytes beyond this is the start of the body. The body EXCLUDES
         # the final byte, which is  '\x00'.
         body = msgdata[hbytes + 2:-1]
-        return StompFrame(cmd, headers=headers, body=body)
+        return Frame(cmd, headers=headers, body=body)
 
 
     def _find_message_bytes(self, data):

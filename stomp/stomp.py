@@ -132,18 +132,13 @@ class Stomp(object):
     :param port: The port to use. (default ``61613``)
 
     """
-    ConnectionError = ConnectionError
-    ConnectionTimeoutError = ConnectionTimeoutError
-    NotConnectedError = NotConnectedError
 
-    def __init__(self, hostname, port=61613, socket_timeout=None, connection_pool=None):
-        self.host = hostname
+    def __init__(self, host, port=61613, socket_timeout=None, connection_pool=None):
+        self.host = host
         self.port = port
         self.socket_timeout = socket_timeout
         self._subscribed_to = {}
         self._subscribed = None
-        self.connected = None
-        self.frame = Frame()
         self.connection_pool = connection_pool if connection_pool else ConnectionPool()
         self.connection = self.get_connection(host, port, socket_timeout)
     
