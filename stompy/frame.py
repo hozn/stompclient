@@ -1,221 +1,208 @@
-import socket
-import random
-from errno import EAGAIN
-from Queue import Queue
-from Queue import Empty as QueueEmpty
+"""
+Stomp classes to support frames.
 
+This is a mixture of code from the stomper project and the stompy project codebases.
+"""
 
-class UnknownBrokerResponseError(Exception):
-    """An unexpected response was received from the broker."""
+# The version of the protocol we implement.
+STOMP_VERSION = '1.0'
 
+# STOMP Spec v1.0 valid commands:
+VALID_COMMANDS = [
+    'ABORT', 'ACK', 'BEGIN', 'COMMIT', 
+    'CONNECT', 'CONNECTED', 'DISCONNECT', 'MESSAGE',
+    'SEND', 'SUBSCRIBE', 'UNSUBSCRIBE',
+    'RECEIPT', 'ERROR',    
+]
 
-class IntermediateMessageQueue(object):
-    """Internal message queue that holds messages received by the server.
-
-    This to make sure a message isn't received instead of a command response
-    after issuing a receipt request.
-
+class FrameError(Exception):
     """
-
-    def __init__(self):
-        self._queue = Queue()
-
-    def put(self, frame):
-        """Put a new frame onto the message queue."""
-        if "destination" not in frame.headers:
-            return
-        self._queue.put(frame)
-
-    def get(self, frame, nb=False):
-        """Get a new frame from the message queue.
-        If no frame is available it try to get the next frame
-        from the socket.
-
-        :param frame: A :class:`Frame` instance.
-        :keyword nb: Non-blocking.
-
-        """
-        try:
-            return self._queue.get_nowait()
-        except QueueEmpty:
-            return frame.parse_frame(nb=nb)
-
+    Raise for problem with frame generation or parsing.
+    """
 
 class Frame(object):
-    """Build and manage a STOMP Frame.
-
-    :keyword sock: An open socket to the STOMP server.
-
     """
-
-    def __init__(self, sock=None):
-        self.command = None
-        self.headers = {}
-        self.body = None
-        self.session = None
-        self.my_name = socket.gethostbyname(socket.gethostname())
-        self.sock = sock
-        self.iqueue = IntermediateMessageQueue()
-        self.rqueue = Queue()
-
-    def connect(self, sock):
-        """Connect to the STOMP server and get the session id."""
-        self.sock = sock
-        frame = self.build_frame({"command": "CONNECT", "headers": {}})
-        self.send_frame(frame.as_string())
-
-        # Get session from the next reply from the server.
-        next_frame = self.get_reply()
-        self.session = next_frame.headers
-
-    def build_frame(self, args, want_receipt=False):
-        """Build a frame based on a :class:`dict` of arguments.
-
-        :param args: A :class:`dict` of arguments for the frame.
-
-        :keyword want_receipt: Optional argument to get a receipt from
-            the sever that the frame was received.
-
-        Example
-
-            >>> frame = frameobj.build_frame({"command": 'CONNECT',
-                                              "headers": {},
-                                              want_receipt=True)
+    Class to hold a STOMP message frame. 
+    
+    This class is based on code from the Stomper project, with a few modifications.
+    
+    @ivar command: The STOMP command.  When assigned it is validated
+                against the VALID_COMMANDS module-level list.
+    @type command: C{str}
+    
+    @ivar headers: A dictionary of headers for this frame.
+    @type headers: C{dict}
+    
+    @ivar body: The body of the message (bytes).
+    @type body: C{str}
+    """    
+    def __init__(self, command=None, headers=None, body=None):
         """
-        self.command = args.get('command')
-        self.headers = args.get('headers')
-        self.body = args.get('body')
-        if want_receipt:
-            receipt_stamp = str(random.randint(0, 10000000))
-            self.headers["receipt"] = "%s-%s" % (
-                    self.session.get("session"), receipt_stamp)
-        return self
+        Initialize new frame with command, headers, and body.
+        """
+        if body is None:
+            body = ''
+        if headers is None:
+            headers = {}
+        self.command = command
+        self.body = body
+        self.headers = headers
+    
+    def _get_cmd(self):
+        """
+        Returns the command for this frame.
+        """
+        return self._cmd
+    
+    def _set_cmd(self, cmd):
+        """
+        Sets the command, after ensuring that it is a valid command (or None).
+        """
+        if cmd is not None:
+            cmd = cmd.upper()
+            if cmd not in VALID_COMMANDS:
+                raise FrameError("The cmd '%s' is not valid! It must be one of '%s' (STOMP v%s)." % (
+                    cmd, VALID_COMMANDS, STOMP_VERSION)
+                )
+        self._cmd = cmd
+    
+    command = property(_get_cmd, _set_cmd)
 
-    def get_message(self, nb=False):
-        """Get next message frame."""
-        while True:
-            frame = self.iqueue.get(self, nb=nb)
-            if not frame and nb:
-                return None
-            if frame.command == "MESSAGE":
-                return frame
-            else:
-                self.rqueue.put(frame)
-
-    def get_reply(self, nb=False):
-        """Get command reply frame."""
-        while True:
-            try:
-                return self.rqueue.get_nowait()
-            except QueueEmpty:
-                frame = self.parse_frame(nb=nb)
-                if not frame and nb:
-                    return None
-                if frame.command == "MESSAGE":
-                    self.iqueue.put(frame)
-                else:
-                    self.rqueue.put(frame)
-
-    @classmethod
-    def parse(cls, framebytes):
-        """Parse data from socket
-
-        :keyword nb: Non-blocking: If this is set and there is no
-            messages currently waiting, this functions returns ``None``
-            instead of waiting for more data.
-
-        Example
-
-            >>> frameobj.parse_frame()
-
+    def unpack(self, framebytes):
+        """
+        Parse data from received bytes into this frame object.
         """
         command = self.parse_command(framebytes)
-        line = line[len(command)+1:]
+        line = framebytes[len(command)+1:]
         headers_str, _, body = framebytes.partition("\n\n")
         if not headers_str:
-            raise UnknownBrokerResponseError("Received: (%s)" % line)
+            raise FrameError("No headers in frame line; received: (%s)" % line)
         headers = self.parse_headers(headers_str)
-
-        if 'content-length' in headers:
-            headers['bytes_message'] = True
-
-        frame = Frame(self.sock)
-        return frame.build_frame({'command': command,
-                                  'headers': headers,
-                                  'body': body})
+        
+        self.command = command
+        self.headers = headers
+        self.body = body
 
     def parse_command(self, framebytes):
-        """Parse command received from the server."""
+        """
+        Parse command received from the server.
+        
+        @return: The command.
+        @rtype: C{str}
+        """
         command = framebytes.split('\n', 1)[0]
         return command
 
     def parse_headers(self, headers_str):
-        """Parse headers received from the servers and convert
-        to a :class:`dict`."""
+        """
+        Parse headers received from the servers and convert to a :class:`dict`.
+        
+        @return: The headers dict.
+        @rtype: C{dict}
+        """
         # george:constanza\nelaine:benes
         # -> {"george": "constanza", "elaine": "benes"}
         return dict(line.split(":", 1) for line in headers_str.split("\n"))
-
-    def send_frame(self, frame):
-        """Send frame to server, get receipt if needed."""
-        self.sock.sendall(frame)
-
-        if 'receipt' in self.headers:
-            return self.get_reply()
-
-    def _getline(self, nb=False):
-        """Get a single line from socket
-
-        :keyword nb: Non-blocking: If this is set, and there is no
-            messages to receive, this function returns ``None``.
-
-        """
-        self.sock.setblocking(not nb)
-        try:
-            buffer = ''
-            partial = ''
-            while not buffer.endswith('\x00\n'):
-                try:
-                    partial = self.sock.recv(1)
-                except socket.error, exc:
-                    if exc.errno == EAGAIN:
-                        if not buffer:
-                            return None
-                        continue
-                buffer += partial
-        finally:
-            self.sock.setblocking(nb)
-        return buffer[:-2]
     
-    def __str__(self):
-        """Raw string representation of this frame
-        Suitable for passing over a socket to the STOMP server.
-
-        Example
-
-            >>> stomp.send(frameobj.as_string())
-
+    def pack(self):
+        """
+        Create a string representation from object state.
+        
+        @return: The string (bytes) for this stomp frame.
+        @rtype: C{str} 
         """
         command = self.command
         headers = self.headers
         body = self.body
-
-        bytes_message = False
-        if 'bytes_message' in headers:
-            bytes_message = True
-            del headers['bytes_message']
-            headers['content-length'] = len(body)
-        headers['x-client'] = self.my_name
+        
+        headers['content-length'] = len(body)
 
         # Convert and append any existing headers to a string as the
         # protocol describes.
-        headerparts = ("%s:%s\n" % (key, value)
-                            for key, value in headers.iteritems())
+        headerparts = ("%s:%s\n" % (key, value) for key, value in headers.iteritems())
 
         # Frame is Command + Header + EOF marker.
-        frame = "%s\n%s\n%s\x00" % (command, "".join(headerparts), body)
-
-        return frame
-
+        framebytes = "%s\n%s\n%s\x00" % (command, "".join(headerparts), body)
+        
+        return framebytes
+    
+    def __getattr__(self, name):
+        """ Convenience way to return header values as if they're object attributes. 
+        
+        We replace '-' chars with '_' to make the headers python-friendly.  For example:
+            
+            frame.headers['message-id'] == frame.message_id
+            
+        >>> f = StompFrame(cmd='MESSAGE', headers={'message-id': 'id-here', 'other_header': 'value'}, body='')
+        >>> f.message_id
+        'id-here'
+        >>> f.other_header
+        'value'
+        """
+        if name.startswith('_'):
+            raise AttributeError()
+        
+        try:
+            return self.headers[name]
+        except KeyError:
+            # Try converting _ to -
+            return self.headers.get(name.replace('_', '-'))
+    
+    def __eq__(self, other):
+        """ Override equality checking to test for matching command, headers, and body. """
+        return (isinstance(other, Frame) and 
+                self.cmd == other.cmd and 
+                self.headers == other.headers and 
+                self.body == other.body)
+    
+    def __ne__(self, other):
+        return not self.__eq__(other)
+    
+    def __str__(self):
+        return self.pack()
+    
     def __repr__(self):
-        return "<Frame %s>" % pformat(self.headers)
+        return '<%s cmd=%s len=%d>' % (self.__class__.__name__, self.cmd, len(self.body))
+    
+class HeaderValue(object):
+    """
+    An descriptor class that can be used when a calculated header value is needed.
+    
+    This class is a descriptor, implementing  __get__ to return the calculated value.
+    While according to  U{http://docs.codehaus.org/display/STOMP/Character+Encoding} there 
+    seems to some general idea about having UTF-8 as the character encoding for headers;
+    however the C{stomper} lib does not support this currently.
+    
+    For example, to use this class to generate the content-length header:
+    
+        >>> body = 'asdf'
+        >>> headers = {}
+        >>> headers['content-length'] = HeaderValue(calculator=lambda: len(body))
+        >>> str(headers['content-length'])
+        '4' 
+        
+    @ivar calc: The calculator function.
+    @type calc: C{callable}
+    """
+    def __init__(self, calculator):
+        """
+        @param calculator: The calculator callable that will yield the desired value.
+        @type calculator: C{callable}
+        """
+        if not callable(calculator):
+            raise ValueError("Non-callable param: %s" % calculator)
+        self.calc = calculator
+    
+    def __get__(self, obj, objtype):
+        return self.calc()
+    
+    def __str__(self):
+        return str(self.calc())
+    
+    def __set__(self, obj, value):
+        self.calc = value
+        
+    def __repr__(self):
+        return '<%s calculator=%s>' % (self.__class__.__name__, self.calc)
+
+    
