@@ -9,3 +9,4 @@
 \..*sw[po]
 .*egg-info
 docs/\.build
+\..*

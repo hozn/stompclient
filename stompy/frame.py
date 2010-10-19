@@ -91,36 +91,6 @@ class Frame(object):
                     self.session.get("session"), receipt_stamp)
         return self
 
-    def as_string(self):
-        """Raw string representation of this frame
-        Suitable for passing over a socket to the STOMP server.
-
-        Example
-
-            >>> stomp.send(frameobj.as_string())
-
-        """
-        command = self.command
-        headers = self.headers
-        body = self.body
-
-        bytes_message = False
-        if 'bytes_message' in headers:
-            bytes_message = True
-            del headers['bytes_message']
-            headers['content-length'] = len(body)
-        headers['x-client'] = self.my_name
-
-        # Convert and append any existing headers to a string as the
-        # protocol describes.
-        headerparts = ("%s:%s\n" % (key, value)
-                            for key, value in headers.iteritems())
-
-        # Frame is Command + Header + EOF marker.
-        frame = "%s\n%s\n%s\x00" % (command, "".join(headerparts), body)
-
-        return frame
-
     def get_message(self, nb=False):
         """Get next message frame."""
         while True:
@@ -146,7 +116,8 @@ class Frame(object):
                 else:
                     self.rqueue.put(frame)
 
-    def parse_frame(self, nb=False):
+    @classmethod
+    def parse(cls, framebytes):
         """Parse data from socket
 
         :keyword nb: Non-blocking: If this is set and there is no
@@ -158,16 +129,11 @@ class Frame(object):
             >>> frameobj.parse_frame()
 
         """
-        line = self._getline(nb=nb)
-        if not line:
-            return
-
-        command = self.parse_command(line)
+        command = self.parse_command(framebytes)
         line = line[len(command)+1:]
-        headers_str, _, body = line.partition("\n\n")
+        headers_str, _, body = framebytes.partition("\n\n")
         if not headers_str:
-            raise UnknownBrokerResponseError(
-                    "Received: (%s)" % line)
+            raise UnknownBrokerResponseError("Received: (%s)" % line)
         headers = self.parse_headers(headers_str)
 
         if 'content-length' in headers:
@@ -178,9 +144,9 @@ class Frame(object):
                                   'headers': headers,
                                   'body': body})
 
-    def parse_command(self, str):
+    def parse_command(self, framebytes):
         """Parse command received from the server."""
-        command = str.split('\n', 1)[0]
+        command = framebytes.split('\n', 1)[0]
         return command
 
     def parse_headers(self, headers_str):
@@ -220,6 +186,36 @@ class Frame(object):
         finally:
             self.sock.setblocking(nb)
         return buffer[:-2]
+    
+    def __str__(self):
+        """Raw string representation of this frame
+        Suitable for passing over a socket to the STOMP server.
+
+        Example
+
+            >>> stomp.send(frameobj.as_string())
+
+        """
+        command = self.command
+        headers = self.headers
+        body = self.body
+
+        bytes_message = False
+        if 'bytes_message' in headers:
+            bytes_message = True
+            del headers['bytes_message']
+            headers['content-length'] = len(body)
+        headers['x-client'] = self.my_name
+
+        # Convert and append any existing headers to a string as the
+        # protocol describes.
+        headerparts = ("%s:%s\n" % (key, value)
+                            for key, value in headers.iteritems())
+
+        # Frame is Command + Header + EOF marker.
+        frame = "%s\n%s\n%s\x00" % (command, "".join(headerparts), body)
+
+        return frame
 
     def __repr__(self):
         return "<Frame %s>" % pformat(self.headers)
