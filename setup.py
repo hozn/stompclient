@@ -15,7 +15,6 @@ The goals of this project are:
 """
 from setuptools import setup, find_packages
 
-__version__ = ".".join(map(str, VERSION))
 __authors__ = ['Ricky Iacovou (stomper version)', '"Hans Lellelid" <hans@xmpl.org>']
 __copyright__ = "Copyright 2009 Benjamin W. Smith, Copyright 2010 Hans Lellelid"
 
@@ -29,7 +28,7 @@ setup(name='python-stomp',
       url="",
       keywords='stomp client',
       test_suite="nose.collector",
-      setup_requires=['nose>=0.11'],
+      setup_requires=['nose>=0.11', 'mock'],
       classifiers=["Development Status :: 2 - Pre-Alpha",
                    "Intended Audience :: Developers",
                    "License :: OSI Approved :: Apache Software License",

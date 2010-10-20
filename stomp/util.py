@@ -4,7 +4,7 @@ Utility functions and classes.
 import re
 import logging
 
-from stomp.frame import Frame
+from stomp.frame import Frame, VALID_COMMANDS
 
 class FrameBuffer(object):
     """
