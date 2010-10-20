@@ -24,9 +24,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License."""
 
-class BasicClient(object):
+class SimplexClient(object):
     """
-    A basic STOMP client that only supports message publication (no reading from server).
+    A basic STOMP client that provides only the producer role (does not consume messages form server).
+    
+    The implication is that this client does not support subscribing to destinations or the 'receipt'
+    header (which expects acknowledgement of message from server).
     
     @ivar connection: The STOMP connection.
     @type connection: L{stomp.core.Connection}
@@ -45,7 +48,7 @@ class BasicClient(object):
         """Disconnect from the server."""
         try:
             for destination in self._subscribed_to.keys():
-                self.unsubscribe({"destination": destination})
+                self.unsubscribe(destination)
             self._send_command("DISCONNECT", conf)
         except self.NotConnectedError:
             pass
@@ -67,9 +70,12 @@ class BasicClient(object):
         send = frame.SendFrame(destination, body, transaction)
         return self.send_frame(send)
 
-    def subscribe(self):
+    def subscribe(self, destination):
         """
         Subscribe to a given destination.
+        
+        @param destination: The destination "path" to subscribe to.
+        @type destination: C{str}
         """
         raise NotImplementedError("%s client does not implement SUBSCRIBE" % (self.__class__,))
 
@@ -118,8 +124,7 @@ class BasicClient(object):
         @raise ValueError: Underlying code will raise if neither destination nor id 
                             params are specified. 
         """
-        unsubscribe = frame.UnsubscribeFrame(destination=destination, id=id)
-        return self.send_frame(unsubscribe)
+        raise NotImplementedError("%s client does not implement UNSUBSCRIBE" % (self.__class__,))
         
     def ack(self, message_id, transaction=None):
         """
@@ -144,7 +149,7 @@ class BasicClient(object):
         @raise NotImplementedError: If the frame includes a 'receipt' header, since this implementation
                 does not support receiving data from the STOMP broker.
         """
-        if 'receipt' in frame.hreaders:
+        if 'receipt' in frame.headers:
             raise NotImplementedError('%s client implementation does not support message receipts.' % (self.__class__,))
         
         try:

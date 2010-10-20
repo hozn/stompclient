@@ -2,7 +2,7 @@ import socket
 import errno
 import threading
 
-from stomp.exceptions import ConnectionError, ConnectionTimeoutError
+from stomp.exception import ConnectionError, ConnectionTimeoutError
 
 __authors__ = ['"Hans Lellelid" <hans@xmpl.org>', 'Andy McCurdy (redis)']
 __copyright__ = "Copyright 2010 Hans Lellelid, Copyright 2010 Andy McCurdy"
@@ -106,10 +106,29 @@ class Connection(object):
                 self.disconnect()
             raise ConnectionError("Error %s while writing to socket. %s." % e.args)
 
-    def read(self, length=None):
+    def read(self, length):
         """
-        Reads a full frame from socket if length is none, else reads length bytes.
+        Blocking call to read length bytes from underlying socket.
+        
+        This can be used in conjunction with the L{stomp.util.FrameBuffer} to parse into 
+        discrete frames.
         """
+        try:
+            while True:
+                data = self.request.recv(8192)
+                if not data:
+                    break
+                if self.debug:
+                    self.log.debug("RECV: %r" % data)
+                self.buffer.append(data)
+                
+                for frame in self.buffer:
+                    self.log.debug("Processing frame: %s" % frame)
+                    self.engine.process_frame(frame)
+        except Exception, e:
+            self.log.error("Error receiving data (unbinding): %s" % e)
+            self.engine.unbind()
+            raise
         if length is not None:
             return self._fp.read(length)
         else:
