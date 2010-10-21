@@ -106,41 +106,25 @@ class Connection(object):
                 self.disconnect()
             raise ConnectionError("Error %s while writing to socket. %s." % e.args)
 
-    def read(self, length):
+    def read(self, length, timeout=None):
         """
         Blocking call to read length bytes from underlying socket.
         
         This can be used in conjunction with the L{stomp.util.FrameBuffer} to parse into 
         discrete frames.
+        
+        @param length: Number of bytes to read.
+        @type length: C{int}
+        
+        @param timeout: Timeout to wait for bytes.
+        @type timeout: C{float}
         """
+        save_timeout = self._sock.gettimeout()
+        if timeout is not None:
+            self._sock.settimeout(timeout)
         try:
-            while True:
-                data = self.request.recv(8192)
-                if not data:
-                    break
-                if self.debug:
-                    self.log.debug("RECV: %r" % data)
-                self.buffer.append(data)
-                
-                for frame in self.buffer:
-                    self.log.debug("Processing frame: %s" % frame)
-                    self.engine.process_frame(frame)
-        except Exception, e:
-            self.log.error("Error receiving data (unbinding): %s" % e)
-            self.engine.unbind()
-            raise
-        if length is not None:
-            return self._fp.read(length)
-        else:
-            buffer = ''
-            partial = ''
-            while not buffer.endswith('\x00\n'):
-                try:
-                    partial = self._fp.read(1)
-                except socket.error, exc:
-                    if exc.errno == errno.EAGAIN:
-                        if not buffer:
-                            return None
-                        continue
-                buffer += partial
-            return buffer[:-2]
+            return self._sock.recv(length)
+        except socket.timeout:
+            pass
+        finally:
+            self._sock.settimeout(save_timeout)
