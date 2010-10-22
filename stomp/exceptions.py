@@ -1,4 +1,4 @@
-import socket.error
+import socket
 
 class NotConnectedError(Exception):
     """No longer connected to the STOMP server."""

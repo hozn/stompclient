@@ -5,6 +5,7 @@ from __future__ import absolute_import
 import socket
 import errno
 import threading
+import logging
 
 from stomp import frame
 from stomp.core import ConnectionPool
@@ -24,7 +25,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License."""
 
-class SimplexClient(object):
+class SimplexClient(threading.local):
     """
     A basic STOMP client that provides only the producer role (does not consume messages form server).
     
@@ -36,14 +37,25 @@ class SimplexClient(object):
     """
 
     def __init__(self, host, port=61613, socket_timeout=None, connection_pool=None):
+        self.log = logging.getLogger('%s.%s' % (self.__class__.__module__, self.__class__.__name__))
         self.connection_pool = connection_pool if connection_pool else ConnectionPool()
-        self.connection = self.get_connection(host, port, socket_timeout)
-    
+        self.host = host
+        self.port = port
+        self.socket_timeout = socket_timeout
+        
     def get_connection(self, host, port, socket_timeout):
         "Returns a connection object"
         conn = self.connection_pool.get_connection(host, port, socket_timeout)
         return conn
     
+    def connect(self, login=None, passcode=None):
+        """
+        Get connection and send CONNECT frame to the STOMP server. 
+        """
+        self.connection = self.get_connection(self.host, self.port, self.socket_timeout)
+        connect = frame.ConnectFrame(login, passcode)
+        return self.send_frame(connect)
+
     def disconnect(self, conf=None):
         """Disconnect from the server."""
         try:

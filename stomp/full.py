@@ -39,13 +39,14 @@ class BlockingDuplexClient(SimplexClient):
         """
         Blocking method that reads from connection socket.
         
-        This would typically be started within its own thread.
+        This would typically be started within its own thread, since it will
+        block until error.
         """
         self.listening_event.set()
         self.shutdown_event.clear()
         try:
             while not self.shutdown_event.is_set():
-                data = self.connection.read(8192, timeout=0.1)
+                data = self.connection.read(8192)
                 if not data:
                     break
                 if self.debug:
