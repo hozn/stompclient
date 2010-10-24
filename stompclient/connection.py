@@ -1,8 +1,7 @@
+import abc
 import socket
 import errno
 import threading
-
-from stomp.exception import ConnectionError, ConnectionTimeoutError
 
 __authors__ = ['"Hans Lellelid" <hans@xmpl.org>', 'Andy McCurdy (redis)']
 __copyright__ = "Copyright 2010 Hans Lellelid, Copyright 2010 Andy McCurdy"
@@ -18,10 +17,25 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License."""
 
+class NotConnectedError(Exception):
+    """No longer connected to the STOMP server."""
 
-class ConnectionPool(threading.local):
+
+class ConnectionError(socket.error):
+    """Couldn't connect to the STOMP server."""
+
+
+class ConnectionTimeoutError(socket.timeout):
+    """Timed-out while establishing connection to the STOMP server."""
+
+
+class ConnectionPool(object):
     """
-    A thread-local pool of connections keyed by host:port.
+    A global pool of connections keyed by host:port.
+    
+    This pool does not provide any thread-localization for the connections that 
+    it stores; use the ThreadLocalConnectionPool subclass if you want to ensure
+    that connections cannot be shared between threads.   
     """
     
     def __init__(self):
@@ -33,7 +47,7 @@ class ConnectionPool(threading.local):
         """
         return '%s:%s' % (host, port)
 
-    def get_connection(self, host, port, socket_timeout):
+    def get_connection(self, host, port, socket_timeout=None):
         """
         Return a specific connection for the specified host and port.
         """
@@ -45,10 +59,23 @@ class ConnectionPool(threading.local):
     def get_all_connections(self):
         "Return a list of all connection objects the manager knows about"
         return self.connections.values()
+
+class ThreadLocalConnectionPool(ConnectionPool, threading.local):
+    """
+    A connection pool that ensures that connections are not shared between threads.
     
+    This is useful for publish-only clients when desiring a connection pool to be used in a 
+    multi-threaded context (e.g. web servers).  This notably does NOT work for publish-
+    subscribe clients, since the message messages are received by a separate thread. 
+    """
+    pass
+
 class Connection(object):
     """
     Handles TCP connections to the STOMP server.
+    
+    This class is notably not thread-safe.  You need to use external mechanisms to guard access
+    to connections.
     """
     def __init__(self, hostname, port=61613, socket_timeout=None):
         self.host = hostname
@@ -57,7 +84,6 @@ class Connection(object):
         self._sock = None
         self._fp = None
 
-        
     def connect(self):
         """
         Connects to the STOMP server if not already connected.
@@ -106,25 +132,17 @@ class Connection(object):
                 self.disconnect()
             raise ConnectionError("Error %s while writing to socket. %s." % e.args)
 
-    def read(self, length, timeout=None):
+    def read(self, length):
         """
         Blocking call to read length bytes from underlying socket.
         
-        This can be used in conjunction with the L{stomp.util.FrameBuffer} to parse into 
-        discrete frames.
+        This can be used in conjunction with the L{stompclient.util.FrameBuffer} to 
+        parse into discrete frames.
         
         @param length: Number of bytes to read.
         @type length: C{int}
-        
-        @param timeout: Timeout to wait for bytes.
-        @type timeout: C{float}
         """
-        save_timeout = self._sock.gettimeout()
-        if timeout is not None:
-            self._sock.settimeout(timeout)
         try:
             return self._sock.recv(length)
         except socket.timeout:
             pass
-        finally:
-            self._sock.settimeout(save_timeout)

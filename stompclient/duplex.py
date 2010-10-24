@@ -2,12 +2,13 @@
 Clients that support both sending and receiving messages (produce & consume).
 """
 import threading
+from copy import copy
 from Queue import Queue
 
 from stompclient import frame
-from stompclient.basic import SimplexClient
+from stompclient.simplex import SimplexClient
 from stompclient.util import FrameBuffer
-from stompclient.exceptions import ConnectionError
+from stompclient.connection import ConnectionError, NotConnectedError
 
 __authors__ = ['"Hans Lellelid" <hans@xmpl.org>']
 __copyright__ = "Copyright 2010 Hans Lellelid"
@@ -23,24 +24,41 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License."""
 
-class BlockingDuplexClient(SimplexClient):
+class QueueingDuplexClient(SimplexClient):
     """
-    A STOMP client that supports both producer and consumer roles using threading.
+    A STOMP client that supports both producer and consumer roles, depositing received
+    frames onto thread-safe queues.
+    
+    This class can be used directly; however, it requires that the calling code
+    pull frames from the queues and dispatch them.  More typically, this class can
+    be used as a basis for a more convenient frame-dispatching client. 
+    
+    Because this class must be run in a multi-threaded context (thread for listening 
+    loop), it IS NOT thread-safe.  Specifically is must be used with a non-threadsafe
+    connecton pool, so that the same connection can be accessed from multipl threads.
+
+    @ivar connected_queue: A queue to hold CONNECTED frames from the server.
+    @type connected_queue: C{Queue.Queue}
     
     @ivar message_queue: A queue of all the MESSAGE frames from the server to a
                             destination that has been subscribed to.
     @type message_queue: C{Queue.Queue}
     
-    @type receipt_queue: A queue of RECEPT frames from the server (these are replies to requests 
-                            that included the 'receipt' header).
+    @ivar receipt_queue: A queue of RECEPT frames from the server (these are replies 
+                            to requests that included the 'receipt' header).
     @type receipt_queue: C{Queue.Queue} 
     
-    @ivar subscribed_destinations: A C{set} of subscribed destinations. 
+    @ivar error_queue: A queue of ERROR frames from the server.
+    @type error_queue: C{Queue.Queue} 
+    
+    @ivar subscribed_destinations: A C{set} of subscribed destinations.
+    @type subscribed_destinations: C{set} 
     """
     debug = False
     
     def __init__(self, host, port=61613, socket_timeout=None, connection_pool=None):
-        super(BlockingDuplexClient, self).__init__(host, port=port, socket_timeout=socket_timeout, connection_pool=connection_pool)
+        super(QueueingDuplexClient, self).__init__(host, port=port, socket_timeout=socket_timeout, connection_pool=connection_pool)
+        self.connected_queue = Queue()
         self.message_queue = Queue()
         self.receipt_queue = Queue()
         self.error_queue = Queue()
@@ -48,6 +66,8 @@ class BlockingDuplexClient(SimplexClient):
         self.shutdown_event = threading.Event()
         self.listening_event = threading.Event()
         self.subscribed_destinations = set()
+        if isinstance(connection_pool, threading.local):
+            raise Exception("Cannot use a thread-local pool for duplex clients.")
     
     def listener_forever(self):
         """
@@ -79,6 +99,8 @@ class BlockingDuplexClient(SimplexClient):
                                 self.log.debug("Ignoring frame for unsubscribed destination: %s" % frame)
                     elif frame.command == 'ERROR':
                         self.error_queue.put(frame)
+                    elif frame.command == 'CONNECTED':
+                        self.connected_queue.put(frame)
                     else:
                         self.log.info("Ignoring frame from server: %s" % frame)
                         
@@ -88,16 +110,32 @@ class BlockingDuplexClient(SimplexClient):
         finally:
             self.listening_event.clear()
     
-    def disconnect(self, conf=None):
-        """Disconnect from the server."""
+    def connect(self, login=None, passcode=None):
+        """
+        Get connection and send CONNECT frame to the STOMP server. 
+        
+        @return: The CONNECTED frame from the server.
+        @rtype: L{stompclient.frame.Frame}
+        """
+        connect = frame.ConnectFrame(login, passcode)
+        self.send_frame(connect)
+        return self.connected_queue.get()
+    
+    def disconnect(self):
+        """
+        Disconnect from the server.
+        """
         try:
-            for destination in self._subscribed_to.keys():
-                self.unsubscribe({"destination": destination})
-            self._send_command("DISCONNECT", conf)
-        except self.NotConnectedError:
+            # Need a copy since unsubscribe() removes the destination from the set.
+            subcpy = copy(self.subscribed_destinations)
+            for destination in subcpy:
+                self.unsubscribe(destination)
+        except NotConnectedError:
             pass
+        finally:
+            self.shutdown_event.set()
         self.connection.disconnect()
-        # XXX: Signal shut down of blocking loop?
+        
         
     def subscribe(self, destination):
         """
@@ -128,15 +166,15 @@ class BlockingDuplexClient(SimplexClient):
         """
         unsubscribe = frame.UnsubscribeFrame(destination=destination, id=id)
         res = self.send_frame(unsubscribe)
-        self.subscribed_destinations.pop(destination)
+        self.subscribed_destinations.remove(destination)
         return res
 
     def send_frame(self, frame):
         """
         Send a frame to the STOMP server.
         
-        This implementation does not support the 'receipt' header; it can be overridden
-        in subclasses to support reading responses from the server socket.
+        This implementation does support the 'receipt' header, blocking on the
+        receipt queue until a receipt frame is received.
         
         @param frame: The frame instance to send.
         @type frame: L{stomp.frame.Frame}
@@ -144,8 +182,8 @@ class BlockingDuplexClient(SimplexClient):
         @raise NotImplementedError: If the frame includes a 'receipt' header, since this implementation
                 does not support receiving data from the STOMP broker.
         """
-        wait_for_reply = ('receipt' in frame.headers) 
-        if wait_for_reply and not self.listening_event.is_set():
+        need_receipt = ('receipt' in frame.headers) 
+        if need_receipt and not self.listening_event.is_set():
             raise Exception("Receipt requested, but cannot deliver; listening loop is not running.")
         
         try:
@@ -154,7 +192,7 @@ class BlockingDuplexClient(SimplexClient):
             self.connection.disconnect()
             self.connection.send(str(frame))
             
-        if wait_for_reply:
+        if need_receipt:
             return self.receipt_queue.get()
     
         

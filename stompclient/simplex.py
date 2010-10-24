@@ -1,15 +1,10 @@
 """
-
+Support for basic, one-way (publish-only) communication with stomp server.
 """
-from __future__ import absolute_import
-import socket
-import errno
-import threading
 import logging
 
 from stompclient import frame
-from stompclient.core import ConnectionPool
-from stompclient.exceptions import ConnectionError
+from stompclient.connection import ConnectionPool, ConnectionError 
 
 __authors__ = ['"Hans Lellelid" <hans@xmpl.org>', 'Benjamin W. Smith (stompy)']
 __copyright__ = "Copyright 2010 Hans Lellelid, Copyright 2008 Ricky Iacovou, Copyright 2009 Benjamin W. Smith"
@@ -25,15 +20,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License."""
 
-class SimplexClient(threading.local):
+class SimplexClient(object):
     """
     A basic STOMP client that provides only the producer role (does not consume messages form server).
     
     The implication is that this client does not support subscribing to destinations or the 'receipt'
     header (which expects acknowledgement of message from server).
     
-    @ivar connection: The STOMP connection.
-    @type connection: L{stomp.core.Connection}
+    This client may be used with a ThreadLocalConnection pool, since there is no need for a message-
+    receiving thread.  (This means that it can be used in a context where a pool of connections
+    needs to be maintained in a multi-threaded environment.)
+    
+    @ivar connection_pool: Object responsible for issuing STOMP connections.
+    @type connection_pool: L{stomp.core.ConnectionPool}
     """
 
     def __init__(self, host, port=61613, socket_timeout=None, connection_pool=None):
@@ -42,17 +41,19 @@ class SimplexClient(threading.local):
         self.host = host
         self.port = port
         self.socket_timeout = socket_timeout
-        
-    def get_connection(self, host, port, socket_timeout):
-        "Returns a connection object"
-        conn = self.connection_pool.get_connection(host, port, socket_timeout)
-        return conn
+    
+    @property
+    def connection(self):
+        """
+        A connection object from the configured pool.
+        @rtype: L{stompclient.connection.Connection} 
+        """
+        return self.connection_pool.get_connection(self.host, self.port, self.socket_timeout)
     
     def connect(self, login=None, passcode=None):
         """
         Get connection and send CONNECT frame to the STOMP server. 
         """
-        self.connection = self.get_connection(self.host, self.port, self.socket_timeout)
         connect = frame.ConnectFrame(login, passcode)
         return self.send_frame(connect)
 
