@@ -7,9 +7,9 @@ import errno
 import threading
 import logging
 
-from stomp import frame
-from stomp.core import ConnectionPool
-from stomp.exceptions import ConnectionError
+from stompclient import frame
+from stompclient.core import ConnectionPool
+from stompclient.exceptions import ConnectionError
 
 __authors__ = ['"Hans Lellelid" <hans@xmpl.org>', 'Benjamin W. Smith (stompy)']
 __copyright__ = "Copyright 2010 Hans Lellelid, Copyright 2008 Ricky Iacovou, Copyright 2009 Benjamin W. Smith"

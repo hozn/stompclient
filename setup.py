@@ -15,17 +15,17 @@ The goals of this project are:
 """
 from setuptools import setup, find_packages
 
-__authors__ = ['Ricky Iacovou (stomper version)', '"Hans Lellelid" <hans@xmpl.org>']
-__copyright__ = "Copyright 2009 Benjamin W. Smith, Copyright 2010 Hans Lellelid"
+__authors__ = ['"Hans Lellelid" <hans@xmpl.org>']
+__copyright__ = "Copyright 2010 Hans Lellelid"
 
-setup(name='python-stomp',
+setup(name='stompclient',
       version="0.1",
       description=__doc__,
       author="Hans Lellelid",
       author_email="hans@xmpl.org",
-      packages = ['stomp'],
+      packages = find_packages(exclude=['tests', 'ez_setup.py', '*.tests.*', 'tests.*', '*.tests']),
       license='Apache',
-      url="",
+      url="http://bitbucket.org/hozn/stompclient",
       keywords='stomp client',
       test_suite="nose.collector",
       setup_requires=['nose>=0.11', 'mock'],
