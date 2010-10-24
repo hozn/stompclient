@@ -69,6 +69,28 @@ class QueueingDuplexClient(SimplexClient):
         if isinstance(connection_pool, threading.local):
             raise Exception("Cannot use a thread-local pool for duplex clients.")
     
+    def dispatch_frame(self, frame):
+        """
+        Route the frame to the appropriate destination.
+        
+        @param frame: Received frame.
+        @type frame: L{stompclient.frame.Frame}
+        """
+        if frame.command == 'RECEIPT':
+            self.receipt_queue.put(frame)
+        elif frame.command == 'MESSAGE':
+            if frame.destination in self.subscribed_destinations:
+                self.message_queue.put(frame)
+            else:
+                if self.debug:
+                    self.log.debug("Ignoring frame for unsubscribed destination: %s" % frame)
+        elif frame.command == 'ERROR':
+            self.error_queue.put(frame)
+        elif frame.command == 'CONNECTED':
+            self.connected_queue.put(frame)
+        else:
+            self.log.info("Ignoring frame from server: %s" % frame)
+        
     def listener_forever(self):
         """
         Blocking method that reads from connection socket.
@@ -89,20 +111,7 @@ class QueueingDuplexClient(SimplexClient):
                 
                 for frame in self.buffer:
                     self.log.debug("Processing frame: %s" % frame)
-                    if frame.command == 'RECEIPT':
-                        self.receipt_queue.put(frame)
-                    elif frame.command == 'MESSAGE':
-                        if frame.destination in self.subscribed_destinations:
-                            self.message_queue.put(frame)
-                        else:
-                            if self.debug:
-                                self.log.debug("Ignoring frame for unsubscribed destination: %s" % frame)
-                    elif frame.command == 'ERROR':
-                        self.error_queue.put(frame)
-                    elif frame.command == 'CONNECTED':
-                        self.connected_queue.put(frame)
-                    else:
-                        self.log.info("Ignoring frame from server: %s" % frame)
+                    self.dispatch_frame(frame)
                         
         except Exception, e:
             self.log.exception("Error receiving data; aborting listening loop.")
@@ -193,7 +202,73 @@ class QueueingDuplexClient(SimplexClient):
             self.connection.send(str(frame))
             
         if need_receipt:
-            return self.receipt_queue.get()
-    
+            return self.receipt_queue.get() 
         
+
+class CallbackDuplexClient(object):
+    """
+    A publish-subscribe client that supports providing callback functions for subscriptions.
     
+    @ivar subscribed_destinations: A C{dict} of subscribed destinations to callables.
+    @type subscribed_destinations: C{dict} of C{str} to C{callable} 
+    """
+    
+    def dispatch_frame(self, frame):
+        """
+        Route the frame to the appropriate destination.
+        
+        @param frame: Received frame.
+        @type frame: L{stompclient.frame.Frame}
+        """
+        if frame.command == 'RECEIPT':
+            self.receipt_queue.put(frame)
+        elif frame.command == 'MESSAGE':
+            if frame.destination in self.subscribed_destinations:
+                self.subscribed_destinations[frame.destination](frame)
+            else:
+                if self.debug:
+                    self.log.debug("Ignoring frame for unsubscribed destination: %s" % frame)
+        elif frame.command == 'ERROR':
+            self.error_queue.put(frame)
+        elif frame.command == 'CONNECTED':
+            self.connected_queue.put(frame)
+        else:
+            self.log.info("Ignoring frame from server: %s" % frame)
+    
+    def subscribe(self, destination, callback):
+        """
+        Subscribe to a given destination with specified callback function.
+        
+        The callable will be passed the received L{stompclient.frame.Frame} object. 
+        
+        @param destination: The destination "path" to subscribe to.
+        @type destination: C{str}
+        
+        @param callback: The callable that will be sent frames received at 
+                            specified destination.
+        @type callback: C{callable} 
+        """
+        subscribe = frame.SubscribeFrame(destination)
+        res = self.send_frame(subscribe)
+        self.subscribed_destinations[destination] = callback
+        return res
+    
+    def unsubscribe(self, destination=None, id=None):
+        """
+        Unsubscribe from a given destination (or id).
+        
+        One of the 'destination' or 'id' parameters must be specified.
+        
+        @param destination: The destination to subscribe to.
+        @type destination: C{str}
+        
+        @param id: The ID to unsubscribe from (may be used in place of destination).
+        @type id: C{str}
+        
+        @raise ValueError: Underlying code will raise if neither destination nor id 
+                            params are specified. 
+        """
+        unsubscribe = frame.UnsubscribeFrame(destination=destination, id=id)
+        res = self.send_frame(unsubscribe)
+        self.subscribed_destinations.pop(destination)
+        return res
