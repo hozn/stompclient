@@ -4,8 +4,8 @@ Test the FrameBuffer utility class.
 import unittest
 import uuid
 
-from stomp.frame import Frame
-from stomp.util import FrameBuffer
+from stompclient.frame import Frame
+from stompclient.util import FrameBuffer
 
 __authors__ = ['"Hans Lellelid" <hans@xmpl.org>']
 __copyright__ = "Copyright 2009 Hans Lellelid"
