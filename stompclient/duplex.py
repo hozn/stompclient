@@ -1,6 +1,7 @@
 """
 Clients that support both sending and receiving messages (produce & consume).
 """
+import abc
 import threading
 from copy import copy
 from Queue import Queue
@@ -24,7 +25,72 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License."""
 
-class QueueingDuplexClient(SimplexClient):
+class BaseBlockingDuplexClient(SimplexClient):
+    """
+    Base class for STOMP client that uses listener loop to receive frames.
+    """
+    __metaclass__ = abc.ABCMeta
+    
+    debug = False
+    
+    def __init__(self, host, port=61613, socket_timeout=None, connection_pool=None):
+        super(BaseBlockingDuplexClient, self).__init__(host, port=port, socket_timeout=socket_timeout, connection_pool=connection_pool)
+        self.buffer = FrameBuffer()
+        self.shutdown_event = threading.Event()
+        self.listening_event = threading.Event()
+        
+    @abc.abstractmethod
+    def dispatch_frame(self, frame):
+        """
+        Route the frame to the appropriate destination.
+        
+        @param frame: Received frame.
+        @type frame: L{stompclient.frame.Frame}
+        """
+        
+    def listen_forever(self):
+        """
+        Blocking method that reads from connection socket.
+        
+        This would typically be started within its own thread, since it will
+        block until error.
+        """
+        self.listening_event.set()
+        self.shutdown_event.clear()
+        try:
+            while not self.shutdown_event.is_set():
+                data = self.connection.read(8192)
+                if not data:
+                    break
+                if self.debug:
+                    self.log.debug("RECV: %r" % data)
+                self.buffer.append(data)
+                
+                for frame in self.buffer:
+                    self.log.debug("Processing frame: %s" % frame)
+                    self.dispatch_frame(frame)
+        except:
+            self.log.exception("Error receiving data; aborting listening loop.")
+            raise
+        finally:
+            self.listening_event.clear()
+    
+    def disconnect(self):
+        """
+        Disconnect from the server.
+        """
+        try:
+            # Need a copy since unsubscribe() removes the destination from the collection.
+            subcpy = copy(self.subscribed_destinations)
+            for destination in subcpy:
+                self.unsubscribe(destination)
+        except NotConnectedError:
+            pass
+        finally:
+            self.shutdown_event.set()
+        self.connection.disconnect()
+ 
+class QueueingDuplexClient(BaseBlockingDuplexClient):
     """
     A STOMP client that supports both producer and consumer roles, depositing received
     frames onto thread-safe queues.
@@ -51,10 +117,9 @@ class QueueingDuplexClient(SimplexClient):
     @ivar error_queue: A queue of ERROR frames from the server.
     @type error_queue: C{Queue.Queue} 
     
-    @ivar subscribed_destinations: A C{set} of subscribed destinations.
-    @type subscribed_destinations: C{set} 
+    @ivar subscribed_destinations: A C{dict} of subscribed destinations (only keys are used in this impl).
+    @type subscribed_destinations: C{dict} of C{str} to C{bool} 
     """
-    debug = False
     
     def __init__(self, host, port=61613, socket_timeout=None, connection_pool=None):
         super(QueueingDuplexClient, self).__init__(host, port=port, socket_timeout=socket_timeout, connection_pool=connection_pool)
@@ -62,10 +127,7 @@ class QueueingDuplexClient(SimplexClient):
         self.message_queue = Queue()
         self.receipt_queue = Queue()
         self.error_queue = Queue()
-        self.buffer = FrameBuffer()
-        self.shutdown_event = threading.Event()
-        self.listening_event = threading.Event()
-        self.subscribed_destinations = set()
+        self.subscribed_destinations = {}
         if isinstance(connection_pool, threading.local):
             raise Exception("Cannot use a thread-local pool for duplex clients.")
     
@@ -91,34 +153,6 @@ class QueueingDuplexClient(SimplexClient):
         else:
             self.log.info("Ignoring frame from server: %s" % frame)
         
-    def listener_forever(self):
-        """
-        Blocking method that reads from connection socket.
-        
-        This would typically be started within its own thread, since it will
-        block until error.
-        """
-        self.listening_event.set()
-        self.shutdown_event.clear()
-        try:
-            while not self.shutdown_event.is_set():
-                data = self.connection.read(8192)
-                if not data:
-                    break
-                if self.debug:
-                    self.log.debug("RECV: %r" % data)
-                self.buffer.append(data)
-                
-                for frame in self.buffer:
-                    self.log.debug("Processing frame: %s" % frame)
-                    self.dispatch_frame(frame)
-                        
-        except Exception, e:
-            self.log.exception("Error receiving data; aborting listening loop.")
-            raise
-        finally:
-            self.listening_event.clear()
-    
     def connect(self, login=None, passcode=None):
         """
         Get connection and send CONNECT frame to the STOMP server. 
@@ -129,22 +163,7 @@ class QueueingDuplexClient(SimplexClient):
         connect = frame.ConnectFrame(login, passcode)
         self.send_frame(connect)
         return self.connected_queue.get()
-    
-    def disconnect(self):
-        """
-        Disconnect from the server.
-        """
-        try:
-            # Need a copy since unsubscribe() removes the destination from the set.
-            subcpy = copy(self.subscribed_destinations)
-            for destination in subcpy:
-                self.unsubscribe(destination)
-        except NotConnectedError:
-            pass
-        finally:
-            self.shutdown_event.set()
-        self.connection.disconnect()
-        
+           
         
     def subscribe(self, destination):
         """
@@ -155,7 +174,7 @@ class QueueingDuplexClient(SimplexClient):
         """
         subscribe = frame.SubscribeFrame(destination)
         res = self.send_frame(subscribe)
-        self.subscribed_destinations.add(destination)
+        self.subscribed_destinations[destination] = True
         return res
         
     def unsubscribe(self, destination=None, id=None):
@@ -175,7 +194,7 @@ class QueueingDuplexClient(SimplexClient):
         """
         unsubscribe = frame.UnsubscribeFrame(destination=destination, id=id)
         res = self.send_frame(unsubscribe)
-        self.subscribed_destinations.remove(destination)
+        self.subscribed_destinations.pop(destination)
         return res
 
     def send_frame(self, frame):
@@ -205,7 +224,7 @@ class QueueingDuplexClient(SimplexClient):
             return self.receipt_queue.get() 
         
 
-class CallbackDuplexClient(object):
+class CallbackDuplexClient(QueueingDuplexClient):
     """
     A publish-subscribe client that supports providing callback functions for subscriptions.
     
@@ -251,24 +270,4 @@ class CallbackDuplexClient(object):
         subscribe = frame.SubscribeFrame(destination)
         res = self.send_frame(subscribe)
         self.subscribed_destinations[destination] = callback
-        return res
-    
-    def unsubscribe(self, destination=None, id=None):
-        """
-        Unsubscribe from a given destination (or id).
-        
-        One of the 'destination' or 'id' parameters must be specified.
-        
-        @param destination: The destination to subscribe to.
-        @type destination: C{str}
-        
-        @param id: The ID to unsubscribe from (may be used in place of destination).
-        @type id: C{str}
-        
-        @raise ValueError: Underlying code will raise if neither destination nor id 
-                            params are specified. 
-        """
-        unsubscribe = frame.UnsubscribeFrame(destination=destination, id=id)
-        res = self.send_frame(unsubscribe)
-        self.subscribed_destinations.pop(destination)
         return res
