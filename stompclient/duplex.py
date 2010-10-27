@@ -51,15 +51,17 @@ class BaseBlockingDuplexClient(BaseClient):
         Blocking method that reads from connection socket.
         
         This would typically be started within its own thread, since it will
-        block until error.
+        block until error or shutdown_event is set.
         """
         self.listening_event.set()
         self.shutdown_event.clear()
         try:
             while not self.shutdown_event.is_set():
                 frame = self.connection.read()
-                self.log.debug("Processing frame: %s" % frame)
-                self.dispatch_frame(frame)
+                print "Got frame: %r" % frame # TODO: Remove this.
+                if frame:
+                    self.log.debug("Processing frame: %s" % frame)
+                    self.dispatch_frame(frame)
         except:
             self.log.exception("Error receiving data; aborting listening loop.")
             raise
@@ -70,6 +72,7 @@ class BaseBlockingDuplexClient(BaseClient):
         """
         Disconnect from the server.
         """
+        self.shutdown_event.set()
         try:
             # Need a copy since unsubscribe() removes the destination from the collection.
             subcpy = copy(self.subscribed_destinations)
@@ -207,6 +210,7 @@ class QueueingDuplexClient(BaseBlockingDuplexClient):
         try:
             self.connection.send(frame)
         except ConnectionError:
+            self.log.warning("Error sending frame, attempting to resend.", exc_info=True)
             self.connection.disconnect()
             self.connection.send(str(frame))
             
