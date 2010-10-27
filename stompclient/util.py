@@ -56,6 +56,12 @@ class FrameBuffer(object):
         self.buffer = ''
         self.debug = False
         self.log = logging.getLogger('%s.%s' % (self.__module__, self.__class__.__name__))
+    
+    def clear(self):
+        """
+        Clears (empties) the internal buffer.
+        """
+        self.buffer = ''
         
     def buffer_len(self):
         """
@@ -80,7 +86,7 @@ class FrameBuffer(object):
         """
         self.buffer += data
 
-    def extract_message(self):
+    def extract_frame(self):
         """
         Pulls one complete frame off the buffer and returns it. 
         
@@ -297,7 +303,7 @@ class FrameBuffer(object):
         
         @rtype: L{stomp.frame.Frame}
         """
-        msg = self.extract_message()
+        msg = self.extract_frame()
         if not msg:
             raise StopIteration()
         return msg

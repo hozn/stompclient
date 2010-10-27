@@ -1,1 +1,2 @@
-from stompclient.simplex import SimplexClient
+from stompclient.simplex import PublishClient
+from stompclient.duplex import PublishSubscribeClient

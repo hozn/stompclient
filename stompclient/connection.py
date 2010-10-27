@@ -3,6 +3,8 @@ import socket
 import errno
 import threading
 
+from stompclient.util import FrameBuffer
+
 __authors__ = ['"Hans Lellelid" <hans@xmpl.org>', 'Andy McCurdy (redis)']
 __copyright__ = "Copyright 2010 Hans Lellelid, Copyright 2010 Andy McCurdy"
 __license__ = """Licensed under the Apache License, Version 2.0 (the "License");
@@ -72,17 +74,28 @@ class ThreadLocalConnectionPool(ConnectionPool, threading.local):
 
 class Connection(object):
     """
-    Handles TCP connections to the STOMP server.
+    Manages TCP connection to the STOMP server and provides an abstracted interface for sending
+    and receiving STOMP frames.
     
     This class is notably not thread-safe.  You need to use external mechanisms to guard access
-    to connections.
+    to connections.  This is typically accomplished by using a thread-safe connection pool 
+    implementation (e.g. L{stompclient.connection.ThreadLocalConnectionPool}).
+    
+    @ivar host: The hostname/address for this connection.
+    @type host: C{str}
+    
+    @ivar port: The port for this connection.
+    @type port: C{int}
+    
+    @ivar socket_timeout: Socket timeout (in seconds).
+    @type socket_timeout: C{float}
     """
-    def __init__(self, hostname, port=61613, socket_timeout=None):
-        self.host = hostname
+    def __init__(self, host, port=61613, socket_timeout=None):
+        self.host = host
         self.port = port
         self.socket_timeout = socket_timeout
         self._sock = None
-        self._fp = None
+        self._buffer = FrameBuffer()
 
     def connect(self):
         """
@@ -101,13 +114,10 @@ class Connection(object):
         sock.setsockopt(socket.SOL_TCP, socket.TCP_NODELAY, 1)
         sock.settimeout(self.socket_timeout)
         self._sock = sock
-        self._fp = sock.makefile('r')
 
     def disconnect(self, conf=None):
         """
         Disconnect from the server, if connected.
-        
-        Sends a DISCONNECT command to the server.
         """
         if self._sock is None:
             return
@@ -116,33 +126,54 @@ class Connection(object):
         except socket.error:
             pass
         self._sock = None
-        self._fp = None
+        self._buffer.clear()
     
-    def send(self, command):
+    def send(self, frame):
         """
-        Send ``command`` to the STOMP server. Return the result.
+        Sends the specified frame to STOMP server.
         
-        :param command: The serialized command string.
+        @param frame: The frame to send to server.
+        @type frame: L{stompclient.frame.Frame}
         """
         self.connect()
         try:
-            self._sock.sendall(command)
+            self._sock.sendall(str(frame))
         except socket.error, e:
             if e.args[0] == errno.EPIPE:
                 self.disconnect()
             raise ConnectionError("Error %s while writing to socket. %s." % e.args)
 
-    def read(self, length):
+    def read(self):
         """
-        Blocking call to read length bytes from underlying socket.
+        Blocking call to read and return a frame from underlying socket.
         
-        This can be used in conjunction with the L{stompclient.util.FrameBuffer} to 
-        parse into discrete frames.
+        Frames are buffered using a L{stompclient.util.FrameBuffer} internally, so subsequent
+        calls to this method may simply return an already-buffered frame.
         
-        @param length: Number of bytes to read.
-        @type length: C{int}
+        @return: A frame read from socket or buffered from previous socket read.
+        @rtype: L{stompclient.frame.Frame}
         """
-        try:
-            return self._sock.recv(length)
-        except socket.timeout:
-            pass
+        self.connect()
+        
+        buffered_frame = self._buffer.extract_frame()
+        
+        if buffered_frame:
+            return buffered_frame
+        else:
+            # Read bytes from socket until we have read a frame (or timeout out) and then return it.
+            received_frame = None
+            try:
+                while True:
+                    bytes = self._sock.recv(8192)
+                    self._buffer.append(bytes)
+                    received_frame = self._buffer.extract_frame()
+                    if received_frame:
+                        break
+            except socket.timeout:
+                pass
+            except socket.error, e:
+                if e.args[0] == errno.EPIPE:
+                    self.disconnect()
+                raise ConnectionError("Error %s while reading from socket. %s." % e.args)
+            
+            return received_frame

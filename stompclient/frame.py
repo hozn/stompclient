@@ -173,7 +173,7 @@ class Frame(object):
         return self.pack()
     
     def __repr__(self):
-        return '<%s cmd=%s len=%d>' % (self.__class__.__name__, self.cmd, len(self.body))
+        return '<%s cmd=%s len=%d>' % (self.__class__.__name__, self.command, len(self.body))
     
 class HeaderValue(object):
     """

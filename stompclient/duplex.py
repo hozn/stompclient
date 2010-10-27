@@ -7,8 +7,7 @@ from copy import copy
 from Queue import Queue
 
 from stompclient import frame
-from stompclient.simplex import SimplexClient
-from stompclient.util import FrameBuffer
+from stompclient.simplex import BaseClient
 from stompclient.connection import ConnectionError, NotConnectedError
 
 __authors__ = ['"Hans Lellelid" <hans@xmpl.org>']
@@ -25,7 +24,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License."""
 
-class BaseBlockingDuplexClient(SimplexClient):
+class BaseBlockingDuplexClient(BaseClient):
     """
     Base class for STOMP client that uses listener loop to receive frames.
     """
@@ -35,7 +34,6 @@ class BaseBlockingDuplexClient(SimplexClient):
     
     def __init__(self, host, port=61613, socket_timeout=None, connection_pool=None):
         super(BaseBlockingDuplexClient, self).__init__(host, port=port, socket_timeout=socket_timeout, connection_pool=connection_pool)
-        self.buffer = FrameBuffer()
         self.shutdown_event = threading.Event()
         self.listening_event = threading.Event()
         
@@ -59,16 +57,9 @@ class BaseBlockingDuplexClient(SimplexClient):
         self.shutdown_event.clear()
         try:
             while not self.shutdown_event.is_set():
-                data = self.connection.read(8192)
-                if not data:
-                    break
-                if self.debug:
-                    self.log.debug("RECV: %r" % data)
-                self.buffer.append(data)
-                
-                for frame in self.buffer:
-                    self.log.debug("Processing frame: %s" % frame)
-                    self.dispatch_frame(frame)
+                frame = self.connection.read()
+                self.log.debug("Processing frame: %s" % frame)
+                self.dispatch_frame(frame)
         except:
             self.log.exception("Error receiving data; aborting listening loop.")
             raise
@@ -84,11 +75,11 @@ class BaseBlockingDuplexClient(SimplexClient):
             subcpy = copy(self.subscribed_destinations)
             for destination in subcpy:
                 self.unsubscribe(destination)
+            self.connection.disconnect()
         except NotConnectedError:
             pass
         finally:
             self.shutdown_event.set()
-        self.connection.disconnect()
  
 class QueueingDuplexClient(BaseBlockingDuplexClient):
     """
@@ -152,7 +143,7 @@ class QueueingDuplexClient(BaseBlockingDuplexClient):
             self.connected_queue.put(frame)
         else:
             self.log.info("Ignoring frame from server: %s" % frame)
-        
+    
     def connect(self, login=None, passcode=None):
         """
         Get connection and send CONNECT frame to the STOMP server. 
@@ -163,7 +154,6 @@ class QueueingDuplexClient(BaseBlockingDuplexClient):
         connect = frame.ConnectFrame(login, passcode)
         self.send_frame(connect)
         return self.connected_queue.get()
-           
         
     def subscribe(self, destination):
         """
@@ -215,7 +205,7 @@ class QueueingDuplexClient(BaseBlockingDuplexClient):
             raise Exception("Receipt requested, but cannot deliver; listening loop is not running.")
         
         try:
-            self.connection.send(str(frame))
+            self.connection.send(frame)
         except ConnectionError:
             self.connection.disconnect()
             self.connection.send(str(frame))
@@ -224,7 +214,7 @@ class QueueingDuplexClient(BaseBlockingDuplexClient):
             return self.receipt_queue.get() 
         
 
-class CallbackDuplexClient(QueueingDuplexClient):
+class PublishSubscribeClient(QueueingDuplexClient):
     """
     A publish-subscribe client that supports providing callback functions for subscriptions.
     
