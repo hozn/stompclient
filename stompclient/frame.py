@@ -3,8 +3,7 @@ Classes to support reading and writing STOMP frames.
 
 This is a mixture of code from the stomper project and the stompy project codebases.
 """
-import logging
-import re
+import uuid
 
 __authors__ = ['"Hans Lellelid" <hans@xmpl.org>', 'Ricky Iacovou (stomper)', 'Benjamin W. Smith (stompy)']
 __copyright__ = "Copyright 2010 Hans Lellelid, Copyright 2008 Ricky Iacovou, Copyright 2009 Benjamin W. Smith"
@@ -377,12 +376,16 @@ class ConnectedFrame(Frame):
 class MessageFrame(Frame):
     """ A MESSAGE server frame. """
     
-    def __init__(self, body=None, extra_headers=None):
+    def __init__(self, destination, body=None, message_id=None, extra_headers=None):
         """
         @param body: The message body bytes.
         @type body: C{str} 
         """
         super(MessageFrame, self).__init__('MESSAGE', headers=extra_headers, body=body)
+        if message_id is None:
+            message_id = uuid.uuid4()
+        self.headers['message-id'] = message_id
+        self.headers['destination'] = destination
         self.headers['content-length'] = HeaderValue(calculator=lambda: len(self.body))
         
 # TODO: Figure out what we need from ErrorFrame (exception wrapping?)

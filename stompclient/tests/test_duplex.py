@@ -27,11 +27,11 @@ class DuplexClientTestBase(TestCase):
         
         def queue_response_frames(f):
             if f.command == 'CONNECT':
-                self.mock_frame_queue.put(frame.Frame('CONNECTED', headers={'session-id': "bogus"}))
+                self.mock_frame_queue.put(frame.ConnectedFrame('bogus-session'))
             else:
                 if 'receipt' in f.headers:
                     receiptid = f.headers['receipt']
-                    self.mock_frame_queue.put(frame.Frame('RECEIPT', headers={'receipt-id': receiptid}))
+                    self.mock_frame_queue.put(frame.ReceiptFrame(receiptid))
                     
         def queued_frame_returner():
             try:
@@ -66,7 +66,7 @@ class QueueingDuplexClientTest(DuplexClientTestBase):
         print self.mockconn.send.call_args
         (sentframe,) = self.mockconn.send.call_args[0]
         
-        expected = frame.Frame(command='CONNECT', headers={})
+        expected = frame.ConnectFrame()
         
         self.assertEquals(expected, sentframe)
                
@@ -75,7 +75,7 @@ class QueueingDuplexClientTest(DuplexClientTestBase):
         self.client.disconnect()
         
         (sentframe,) = self.mockconn.send.call_args[0]
-        expected = frame.Frame('DISCONNECT')
+        expected = frame.DisconnectFrame()
         self.assertEquals(expected, sentframe)
         
         self.assertTrue(self.mockconn.disconnect.called)
@@ -89,12 +89,12 @@ class QueueingDuplexClientTest(DuplexClientTestBase):
         self.client.subscribe(dest)
         self.client.send(dest, body)
         
-        messageframe = frame.Frame('MESSAGE', headers={'destination': dest, 'content-length': len(body)}, body=body)
+        messageframe = frame.MessageFrame(dest, body=body)
         self.mock_frame_queue.put(messageframe)
         
         (sentframe,) = self.mockconn.send.call_args[0]
         
-        expected = frame.Frame('SEND', headers={'destination': dest, 'content-length': len(body)}, body=body)
+        expected = frame.SendFrame(dest, body=body)
         
         self.assertEquals(str(expected), str(sentframe))
         
@@ -106,7 +106,7 @@ class QueueingDuplexClientTest(DuplexClientTestBase):
         
         self.client.send(dest, body)
         
-        messageframe = frame.Frame('MESSAGE', headers={'destination': dest, 'content-length': len(body)}, body=body)
+        messageframe = frame.MessageFrame(dest, body=body)
         self.mock_frame_queue.put(messageframe)
         
         try:
@@ -123,12 +123,12 @@ class QueueingDuplexClientTest(DuplexClientTestBase):
         
         self.client.send(dest, body)
         
-        messageframe = frame.Frame('MESSAGE', headers={'destination': dest, 'content-length': len(body)}, body=body)
+        messageframe = frame.MessageFrame(dest, body=body)
         self.mock_frame_queue.put(messageframe)
         
         (sentframe,) = self.mockconn.send.call_args[0]
         
-        expected = frame.Frame('SEND', headers={'destination': dest, 'content-length': len(body)}, body=body)
+        expected = frame.SendFrame(dest, body=body)
         
         self.assertEquals(str(expected), str(sentframe))
         
@@ -143,7 +143,7 @@ class QueueingDuplexClientTest(DuplexClientTestBase):
         dest = '/foo/bar'
         body = "This is a test."
         
-        receiptframe = frame.Frame('RECEIPT', headers={'receipt-id': '1234'})
+        receiptframe = frame.ReceiptFrame('1234')
         self.mock_frame_queue.put(receiptframe)
         
         responseframe = self.client.send(dest, body, extra_headers={'receipt': '1234'})
@@ -158,12 +158,12 @@ class QueueingDuplexClientTest(DuplexClientTestBase):
         self.client.subscribe(dest)
         self.client.send(dest, body)
         
-        messageframe = frame.Frame('MESSAGE', headers={'destination': dest, 'content-length': len(body)}, body=body)
+        messageframe = frame.MessageFrame(dest, body=body)
         self.mock_frame_queue.put(messageframe)
         
         (sentframe,) = self.mockconn.send.call_args[0]
         
-        expected = frame.Frame('SEND', headers={'destination': dest, 'content-length': len(body)}, body=body)
+        expected = frame.SendFrame(dest, body=body)
         
         self.assertEquals(str(expected), str(sentframe))
         
@@ -177,7 +177,7 @@ class QueueingDuplexClientTest(DuplexClientTestBase):
         self.client.send(dest, body, transaction='t-123')
         (sentframe,) = self.mockconn.send.call_args[0]
         
-        expected = frame.Frame('SEND', headers={'destination': dest, 'content-length': len(body), 'transaction': 't-123'}, body=body)
+        expected = frame.SendFrame(dest, body=body, transaction='t-123')
         
         self.assertEquals(str(expected), str(sentframe))        
         
@@ -199,12 +199,12 @@ class PublishSubscribeClientTest(DuplexClientTestBase):
         self.client.subscribe(dest, enqueueframe)
         self.client.send(dest, body)
         
-        messageframe = frame.Frame('MESSAGE', headers={'destination': dest, 'content-length': len(body)}, body=body)
+        messageframe = frame.MessageFrame(dest, body=body)
         self.mock_frame_queue.put(messageframe)
         
         (sentframe,) = self.mockconn.send.call_args[0]
         
-        expected = frame.Frame('SEND', headers={'destination': dest, 'content-length': len(body)}, body=body)
+        expected = frame.SendFrame(dest, body=body)
         
         self.assertEquals(str(expected), str(sentframe))
         
