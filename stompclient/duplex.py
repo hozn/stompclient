@@ -186,9 +186,6 @@ class QueueingDuplexClient(BaseBlockingDuplexClient):
         @param destination: The destination to subscribe to.
         @type destination: C{str}
         
-        @param id: The ID to unsubscribe from (may be used in place of destination).
-        @type id: C{str}
-        
         @raise ValueError: Underlying code will raise if neither destination nor id 
                             params are specified. 
         """

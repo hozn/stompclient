@@ -141,8 +141,8 @@ class Frame(object):
         
         We replace '-' chars with '_' to make the headers python-friendly.  For example:
             
-            frame.headers['message-id'] == frame.message_id
-            
+        frame.headers['message-id'] == frame.message_id
+        
         >>> f = StompFrame(cmd='MESSAGE', headers={'message-id': 'id-here', 'other_header': 'value'}, body='')
         >>> f.message_id
         'id-here'
@@ -244,7 +244,7 @@ class SendFrame(Frame):
     def __init__(self, destination, body=None, transaction=None, extra_headers=None):
         """
         @param destination: The destination for message.
-        @type destionaton: C{str}
+        @type destination: C{str}
         
         @param body: The message body bytes.
         @type body: C{str} 
@@ -264,7 +264,7 @@ class SubscribeFrame(Frame):
     def __init__(self, destination, ack=None, id=None, selector=None, extra_headers=None):
         """
         @param destination: The destination being subscribed to.
-        @type destionaton: C{str}
+        @type destination: C{str}
         
         @param ack: Specific ack setting (if None, will not be added to headers)
         @type ack: C{str}
@@ -290,7 +290,7 @@ class UnsubscribeFrame(Frame):
     def __init__(self, destination=None, id=None, extra_headers=None):
         """
         @param destination: The destination being unsubscribed from.
-        @type destionaton: C{str}
+        @type destination: C{str}
         
         @param id: An ID used in SUBSCRIBE command (can be used instead of desination).
         @type id: C{str}
