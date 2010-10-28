@@ -355,3 +355,59 @@ class AckFrame(Frame):
         self.headers['message-id'] = message_id
         if transaction:
             self.headers['transaction'] = transaction
+
+# ---------------------------------------------------------------------------------
+# Server Frames
+# ---------------------------------------------------------------------------------
+
+class ConnectedFrame(Frame):
+    """ A CONNECTED server frame (response to CONNECT).
+    
+    @ivar session: The (throw-away) session ID to include in response.
+    @type session: C{str} 
+    """
+    def __init__(self, session, extra_headers=None):
+        """
+        @param session: The (throw-away) session ID to include in response.
+        @type session: C{str}
+        """
+        super(ConnectedFrame,self).__init__('CONNECTED', headers=extra_headers)
+        self.headers['session'] = session
+
+class MessageFrame(Frame):
+    """ A MESSAGE server frame. """
+    
+    def __init__(self, body=None, extra_headers=None):
+        """
+        @param body: The message body bytes.
+        @type body: C{str} 
+        """
+        super(MessageFrame, self).__init__('MESSAGE', headers=extra_headers, body=body)
+        self.headers['content-length'] = HeaderValue(calculator=lambda: len(self.body))
+        
+# TODO: Figure out what we need from ErrorFrame (exception wrapping?)
+class ErrorFrame(Frame):
+    """ An ERROR server frame. """
+    
+    def __init__(self, message, body=None, extra_headers=None):
+        """
+        @param body: The message body bytes.
+        @type body: C{str} 
+        """
+        super(ErrorFrame, self).__init__('ERROR', headers=extra_headers, body=body)
+        self.headers['message'] = message
+        self.headers['content-length'] = HeaderValue(calculator=lambda: len(self.body))
+    
+    def __repr__(self):
+        return '<%s message=%r>' % (self.__class__.__name__, self.headers['message']) 
+    
+class ReceiptFrame(Frame):
+    """ A RECEIPT server frame. """
+    
+    def __init__(self, receipt, extra_headers=None):
+        """
+        @param receipt: The receipt message ID.
+        @type receipt: C{str}
+        """
+        super(ReceiptFrame, self).__init__('RECEIPT', headers=extra_headers)
+        self.headers['receipt-id'] = receipt
