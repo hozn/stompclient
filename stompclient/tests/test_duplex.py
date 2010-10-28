@@ -1,6 +1,7 @@
 """
 Tests for the simple (publish-only) client.
 """
+import abc
 import time
 import threading
 from unittest import TestCase
@@ -10,12 +11,17 @@ from Queue import Queue, Empty
 from stompclient.duplex import PublishSubscribeClient, QueueingDuplexClient
 from stompclient import frame
     
-class QueueingDuplexClientTest(TestCase):
+class DuplexClientTestBase(TestCase):
+    __metaclass__ = abc.ABCMeta
     
+    @abc.abstractproperty
+    def client_class(self):
+        """ The client class to use for tests. """
+        
     def setUp(self):
         self.mockpool = MockingConnectionPool()
         self.mockconn = self.mockpool.connection
-        self.client = QueueingDuplexClient('127.0.0.1', 1234, connection_pool=self.mockpool)
+        self.client = self.client_class('127.0.0.1', 1234, connection_pool=self.mockpool)
         
         self.mock_frame_queue = Queue()
         
@@ -48,7 +54,11 @@ class QueueingDuplexClientTest(TestCase):
         while self.listener.is_alive():
             # print "Waiting for listener thread to end ... shutdown = %r" % self.client.shutdown_event.is_set()
             self.listener.join(timeout=0.5)
-        
+            
+class QueueingDuplexClientTest(DuplexClientTestBase):
+    
+    client_class = QueueingDuplexClient
+    
     def test_connect(self):
         """ Test connect. """
         self.client.connect()
@@ -170,4 +180,33 @@ class QueueingDuplexClientTest(TestCase):
         expected = frame.Frame('SEND', headers={'destination': dest, 'content-length': len(body), 'transaction': 't-123'}, body=body)
         
         self.assertEquals(str(expected), str(sentframe))        
+        
+        
+        
+class PublishSubscribeClientTest(DuplexClientTestBase):
     
+    client_class = PublishSubscribeClient
+        
+    def test_subscribe(self):
+        """ Make sure that MESSAGE frames are delivered to callable. """
+        dest = '/foo/bar'
+        body = "This is a test."
+        
+        framequeue = Queue()
+        
+        enqueueframe = lambda frame: framequeue.put(frame)
+        
+        self.client.subscribe(dest, enqueueframe)
+        self.client.send(dest, body)
+        
+        messageframe = frame.Frame('MESSAGE', headers={'destination': dest, 'content-length': len(body)}, body=body)
+        self.mock_frame_queue.put(messageframe)
+        
+        (sentframe,) = self.mockconn.send.call_args[0]
+        
+        expected = frame.Frame('SEND', headers={'destination': dest, 'content-length': len(body)}, body=body)
+        
+        self.assertEquals(str(expected), str(sentframe))
+        
+        pushed = framequeue.get(timeout=1.0)
+        self.assertEquals(messageframe, pushed)
