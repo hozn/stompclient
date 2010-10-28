@@ -10,7 +10,7 @@ from Queue import Queue, Empty
 from stompclient.duplex import PublishSubscribeClient, QueueingDuplexClient
 from stompclient import frame
     
-class DuplexClientTest(TestCase):
+class QueueingDuplexClientTest(TestCase):
     
     def setUp(self):
         self.mockpool = MockingConnectionPool()
@@ -39,15 +39,16 @@ class DuplexClientTest(TestCase):
         self.mockconn.read.side_effect = queued_frame_returner
         
         # setup listener thread
-        self.listener = threading.Thread(target=self.client.listen_forever, name="ListenerThread")
+        self.listener = threading.Thread(target=self.client.listen_forever, name="ListenerThread-%s" % time.time())
         self.listener.start()
+        self.client.listening_event.wait(timeout=1.0) # MAKE SURE WE'RE LISTENING BEFORE WE RUN TEST!
         
     def tearDown(self):
         self.client.disconnect()
+        # print "DISCONNECT --> shutdown status? %r" % self.client.shutdown_event.is_set()
         while self.listener.is_alive():
-            # print "Waiting for listener thread to end ..."
+            # print "Waiting for listener thread to end ... shutdown = %r" % self.client.shutdown_event.is_set()
             self.listener.join(timeout=0.5)
-
         
     def test_connect(self):
         """ Test connect. """
@@ -104,6 +105,8 @@ class DuplexClientTest(TestCase):
         
         self.assertEquals(str(expected), str(sentframe))
         
+        # self.client.message_queue.get(timeout=1.0)
+        
     def test_subscribe(self):
         """ Test send. """
         dest = '/foo/bar'
@@ -121,8 +124,8 @@ class DuplexClientTest(TestCase):
         
         self.assertEquals(str(expected), str(sentframe))
         
-        pushed = self.client.message_queue.get(block=True, timeout=1.0)
-        self.assertTrue(messageframe, pushed)
+        pushed = self.client.message_queue.get(timeout=1.0)
+        self.assertEquals(messageframe, pushed)
         
 #    def test_send_tx(self):
 #        """ Test send with transaction. """

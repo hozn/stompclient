@@ -27,10 +27,13 @@ class BaseClient(object):
     
     @ivar connection_pool: Object responsible for issuing STOMP connections.
     @type connection_pool: L{stomp.core.ConnectionPool}
+    
+    @ivar socket_timeout: How long to block on reading from sockets before raising exception.
+    @type socket_timeout: C{float}
     """
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, host, port=61613, socket_timeout=None, connection_pool=None):
+    def __init__(self, host, port=61613, socket_timeout=3.0, connection_pool=None):
         self.log = logging.getLogger('%s.%s' % (self.__class__.__module__, self.__class__.__name__))
         self.connection_pool = connection_pool if connection_pool else ThreadLocalConnectionPool()
         self.host = host

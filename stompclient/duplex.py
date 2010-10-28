@@ -4,7 +4,7 @@ Clients that support both sending and receiving messages (produce & consume).
 import abc
 import threading
 from copy import copy
-from Queue import Queue
+from Queue import Queue, Empty
 
 from stompclient import frame
 from stompclient.simplex import BaseClient
@@ -55,10 +55,11 @@ class BaseBlockingDuplexClient(BaseClient):
         """
         self.listening_event.set()
         self.shutdown_event.clear()
+        # print "Cleared shutdown event in %s, now=%r" % (threading.current_thread().name, self.shutdown_event.is_set())
         try:
             while not self.shutdown_event.is_set():
                 frame = self.connection.read()
-                print "Got frame: %r" % frame # TODO: Remove this.
+                # print "Got frame: %r (thread: %s)" % (frame, threading.current_thread().name) # TODO: Remove this.
                 if frame:
                     self.log.debug("Processing frame: %s" % frame)
                     self.dispatch_frame(frame)
@@ -72,7 +73,6 @@ class BaseBlockingDuplexClient(BaseClient):
         """
         Disconnect from the server.
         """
-        self.shutdown_event.set()
         try:
             # Need a copy since unsubscribe() removes the destination from the collection.
             subcpy = copy(self.subscribed_destinations)
@@ -112,16 +112,20 @@ class QueueingDuplexClient(BaseBlockingDuplexClient):
     @type error_queue: C{Queue.Queue} 
     
     @ivar subscribed_destinations: A C{dict} of subscribed destinations (only keys are used in this impl).
-    @type subscribed_destinations: C{dict} of C{str} to C{bool} 
+    @type subscribed_destinations: C{dict} of C{str} to C{bool}
+    
+    @ivar queue_timeout: How long should calls block on fetching frames from queue before timeout and exception?
+    @type queue_timeout: C{float}  
     """
     
-    def __init__(self, host, port=61613, socket_timeout=None, connection_pool=None):
+    def __init__(self, host, port=61613, socket_timeout=None, connection_pool=None, queue_timeout=3.0):
         super(QueueingDuplexClient, self).__init__(host, port=port, socket_timeout=socket_timeout, connection_pool=connection_pool)
         self.connected_queue = Queue()
         self.message_queue = Queue()
         self.receipt_queue = Queue()
         self.error_queue = Queue()
         self.subscribed_destinations = {}
+        self.queue_timeout = queue_timeout
         if isinstance(connection_pool, threading.local):
             raise Exception("Cannot use a thread-local pool for duplex clients.")
     
@@ -156,7 +160,7 @@ class QueueingDuplexClient(BaseBlockingDuplexClient):
         """
         connect = frame.ConnectFrame(login, passcode)
         self.send_frame(connect)
-        return self.connected_queue.get()
+        return self.connected_queue.get(timeout=self.queue_timeout)
         
     def subscribe(self, destination):
         """
@@ -215,7 +219,7 @@ class QueueingDuplexClient(BaseBlockingDuplexClient):
             self.connection.send(str(frame))
             
         if need_receipt:
-            return self.receipt_queue.get() 
+            return self.receipt_queue.get(timeout=self.queue_timeout) 
         
 
 class PublishSubscribeClient(QueueingDuplexClient):
