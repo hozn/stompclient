@@ -45,7 +45,6 @@ class QueueingDuplexClientTest(TestCase):
         
     def tearDown(self):
         self.client.disconnect()
-        # print "DISCONNECT --> shutdown status? %r" % self.client.shutdown_event.is_set()
         while self.listener.is_alive():
             # print "Waiting for listener thread to end ... shutdown = %r" % self.client.shutdown_event.is_set()
             self.listener.join(timeout=0.5)
@@ -62,7 +61,7 @@ class QueueingDuplexClientTest(TestCase):
         self.assertEquals(expected, sentframe)
                
     def test_disconnect(self):
-        """ Test disconnect. """
+        """ Make sure that disconnect results in expected frames. """
         self.client.disconnect()
         
         (sentframe,) = self.mockconn.send.call_args[0]
@@ -71,37 +70,9 @@ class QueueingDuplexClientTest(TestCase):
         
         self.assertTrue(self.mockconn.disconnect.called)
 
-    def test_send(self):
-        """ Test send. """
-        dest = '/foo/bar'
-        body = "This is a test."
+    def test_disconnect_unsubscribe(self):
+        """ Make sure that disconnects unsubscribe clients. """
         
-        self.client.send(dest, body)
-        
-        messageframe = frame.Frame('MESSAGE', headers={'destination': dest, 'content-length': len(body)}, body=body)
-        self.mock_frame_queue.put(messageframe)
-        
-        (sentframe,) = self.mockconn.send.call_args[0]
-        
-        expected = frame.Frame('SEND', headers={'destination': dest, 'content-length': len(body)}, body=body)
-        
-        self.assertEquals(str(expected), str(sentframe))
-        
-
-    def test_send_receipt(self):
-        """ Test send with receipt requested. """
-        dest = '/foo/bar'
-        body = "This is a test."
-        
-        receiptframe = frame.Frame('RECEIPT', headers={'receipt-id': '1234'})
-        self.mock_frame_queue.put(receiptframe)
-        
-        responseframe = self.client.send(dest, body, extra_headers={'receipt': '1234'})
-        
-        self.assertEquals(str(responseframe), str(receiptframe))
-        
-    def test_subscribe(self):
-        """ Test send. """
         dest = '/foo/bar'
         body = "This is a test."
         
@@ -120,15 +91,83 @@ class QueueingDuplexClientTest(TestCase):
         pushed = self.client.message_queue.get(timeout=1.0)
         self.assertEquals(messageframe, pushed)
         
-#    def test_send_tx(self):
-#        """ Test send with transaction. """
-#        dest = '/foo/bar'
-#        body = "This is a test."
-#        self.client.send(dest, body, transaction='t-123')
-#        (sentframe,) = self.mockconn.send.call_args[0]
-#        
-#        expected = frame.Frame('SEND', headers={'destination': dest, 'content-length': len(body), 'transaction': 't-123'}, body=body)
-#        
-#        self.assertEquals(str(expected), str(sentframe))
-#        
+        self.client.disconnect()
+        self.client.connect()
+        
+        self.client.send(dest, body)
+        
+        messageframe = frame.Frame('MESSAGE', headers={'destination': dest, 'content-length': len(body)}, body=body)
+        self.mock_frame_queue.put(messageframe)
+        
+        try:
+            pushed = self.client.message_queue.get(block=False)
+            self.fail("Expected message queue to be empty, but got: %s" % pushed)
+        except Empty:
+            pass
+        
+        
+    def test_send(self):
+        """ Make sure that send() issues expected frames. """
+        dest = '/foo/bar'
+        body = "This is a test."
+        
+        self.client.send(dest, body)
+        
+        messageframe = frame.Frame('MESSAGE', headers={'destination': dest, 'content-length': len(body)}, body=body)
+        self.mock_frame_queue.put(messageframe)
+        
+        (sentframe,) = self.mockconn.send.call_args[0]
+        
+        expected = frame.Frame('SEND', headers={'destination': dest, 'content-length': len(body)}, body=body)
+        
+        self.assertEquals(str(expected), str(sentframe))
+        
+        try:
+            pushed = self.client.message_queue.get(block=False)
+            self.fail("Expected message queue to be empty, but got: %s" % pushed)
+        except Empty:
+            pass
+
+    def test_send_receipt(self):
+        """ Make sure that 'receipt' header results in expected RECEIPT response frame. """
+        dest = '/foo/bar'
+        body = "This is a test."
+        
+        receiptframe = frame.Frame('RECEIPT', headers={'receipt-id': '1234'})
+        self.mock_frame_queue.put(receiptframe)
+        
+        responseframe = self.client.send(dest, body, extra_headers={'receipt': '1234'})
+        
+        self.assertEquals(str(responseframe), str(receiptframe))
+        
+    def test_subscribe(self):
+        """ Make sure that subscribed clients are delivered MESSAGE frames. """
+        dest = '/foo/bar'
+        body = "This is a test."
+        
+        self.client.subscribe(dest)
+        self.client.send(dest, body)
+        
+        messageframe = frame.Frame('MESSAGE', headers={'destination': dest, 'content-length': len(body)}, body=body)
+        self.mock_frame_queue.put(messageframe)
+        
+        (sentframe,) = self.mockconn.send.call_args[0]
+        
+        expected = frame.Frame('SEND', headers={'destination': dest, 'content-length': len(body)}, body=body)
+        
+        self.assertEquals(str(expected), str(sentframe))
+        
+        pushed = self.client.message_queue.get(timeout=1.0)
+        self.assertEquals(messageframe, pushed)
+        
+    def test_send_tx(self):
+        """ Make sure that transaction IDs pass through to delivered frames. """
+        dest = '/foo/bar'
+        body = "This is a test."
+        self.client.send(dest, body, transaction='t-123')
+        (sentframe,) = self.mockconn.send.call_args[0]
+        
+        expected = frame.Frame('SEND', headers={'destination': dest, 'content-length': len(body), 'transaction': 't-123'}, body=body)
+        
+        self.assertEquals(str(expected), str(sentframe))        
     
