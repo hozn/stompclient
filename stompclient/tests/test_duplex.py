@@ -61,16 +61,15 @@ class QueueingDuplexClientTest(TestCase):
         
         self.assertEquals(expected, sentframe)
                
-#    def test_disconnect(self):
-#        """ Test disconnect. """
-#        self.client.disconnect()
-#        
-#        (sentframe,) = self.mockconn.send.call_args[0]
-#        expected = frame.Frame('DISCONNECT')
-#        self.assertEquals(expected, sentframe)
-#        
-#        self.assertTrue(self.mockconn.disconnect.called)
-#        
+    def test_disconnect(self):
+        """ Test disconnect. """
+        self.client.disconnect()
+        
+        (sentframe,) = self.mockconn.send.call_args[0]
+        expected = frame.Frame('DISCONNECT')
+        self.assertEquals(expected, sentframe)
+        
+        self.assertTrue(self.mockconn.disconnect.called)
 
     def test_send(self):
         """ Test send. """
@@ -94,18 +93,12 @@ class QueueingDuplexClientTest(TestCase):
         dest = '/foo/bar'
         body = "This is a test."
         
-        self.client.send(dest, body)
+        receiptframe = frame.Frame('RECEIPT', headers={'receipt-id': '1234'})
+        self.mock_frame_queue.put(receiptframe)
         
-        messageframe = frame.Frame('MESSAGE', headers={'destination': dest, 'content-length': len(body)}, body=body)
-        self.mock_frame_queue.put(messageframe)
+        responseframe = self.client.send(dest, body, extra_headers={'receipt': '1234'})
         
-        (sentframe,) = self.mockconn.send.call_args[0]
-        
-        expected = frame.Frame('SEND', headers={'destination': dest, 'content-length': len(body)}, body=body)
-        
-        self.assertEquals(str(expected), str(sentframe))
-        
-        # self.client.message_queue.get(timeout=1.0)
+        self.assertEquals(str(responseframe), str(receiptframe))
         
     def test_subscribe(self):
         """ Test send. """

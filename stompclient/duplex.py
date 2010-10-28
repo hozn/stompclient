@@ -69,7 +69,7 @@ class BaseBlockingDuplexClient(BaseClient):
         finally:
             self.listening_event.clear()
     
-    def disconnect(self):
+    def disconnect(self, extra_headers=None):
         """
         Disconnect from the server.
         """
@@ -78,7 +78,10 @@ class BaseBlockingDuplexClient(BaseClient):
             subcpy = copy(self.subscribed_destinations)
             for destination in subcpy:
                 self.unsubscribe(destination)
+            disconnect = frame.DisconnectFrame(extra_headers=extra_headers)
+            result = self.send_frame(disconnect)
             self.connection.disconnect()
+            return result
         except NotConnectedError:
             pass
         finally:
@@ -151,30 +154,30 @@ class QueueingDuplexClient(BaseBlockingDuplexClient):
         else:
             self.log.info("Ignoring frame from server: %s" % frame)
     
-    def connect(self, login=None, passcode=None):
+    def connect(self, login=None, passcode=None, extra_headers=None):
         """
         Get connection and send CONNECT frame to the STOMP server. 
         
         @return: The CONNECTED frame from the server.
         @rtype: L{stompclient.frame.Frame}
         """
-        connect = frame.ConnectFrame(login, passcode)
+        connect = frame.ConnectFrame(login, passcode, extra_headers=extra_headers)
         self.send_frame(connect)
         return self.connected_queue.get(timeout=self.queue_timeout)
         
-    def subscribe(self, destination):
+    def subscribe(self, destination, extra_headers=None):
         """
         Subscribe to a given destination.
         
         @param destination: The destination "path" to subscribe to.
         @type destination: C{str}
         """
-        subscribe = frame.SubscribeFrame(destination)
+        subscribe = frame.SubscribeFrame(destination, extra_headers=extra_headers)
         res = self.send_frame(subscribe)
         self.subscribed_destinations[destination] = True
         return res
         
-    def unsubscribe(self, destination=None, id=None):
+    def unsubscribe(self, destination, extra_headers=None):
         """
         Unsubscribe from a given destination (or id).
         
@@ -189,7 +192,7 @@ class QueueingDuplexClient(BaseBlockingDuplexClient):
         @raise ValueError: Underlying code will raise if neither destination nor id 
                             params are specified. 
         """
-        unsubscribe = frame.UnsubscribeFrame(destination=destination, id=id)
+        unsubscribe = frame.UnsubscribeFrame(destination, extra_headers=extra_headers)
         res = self.send_frame(unsubscribe)
         self.subscribed_destinations.pop(destination)
         return res
@@ -252,7 +255,7 @@ class PublishSubscribeClient(QueueingDuplexClient):
         else:
             self.log.info("Ignoring frame from server: %s" % frame)
     
-    def subscribe(self, destination, callback):
+    def subscribe(self, destination, callback, extra_headers=None):
         """
         Subscribe to a given destination with specified callback function.
         
@@ -265,7 +268,7 @@ class PublishSubscribeClient(QueueingDuplexClient):
                             specified destination.
         @type callback: C{callable} 
         """
-        subscribe = frame.SubscribeFrame(destination)
+        subscribe = frame.SubscribeFrame(destination, extra_headers=extra_headers)
         res = self.send_frame(subscribe)
         self.subscribed_destinations[destination] = callback
         return res

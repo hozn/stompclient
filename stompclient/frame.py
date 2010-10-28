@@ -226,8 +226,8 @@ class HeaderValue(object):
 class ConnectFrame(Frame):
     """ A CONNECT client frame. """
     
-    def __init__(self, login=None, passcode=None):
-        super(ConnectFrame, self).__init__('CONNECT')
+    def __init__(self, login=None, passcode=None, extra_headers=None):
+        super(ConnectFrame, self).__init__('CONNECT', headers=extra_headers)
         if login:
             self.headers['login'] = login
         if passcode:
@@ -236,13 +236,13 @@ class ConnectFrame(Frame):
 class DisconnectFrame(Frame):
     """ A DISCONNECT client frame. """
     
-    def __init__(self):
-        super(DisconnectFrame, self).__init__('DISCONNECT')
+    def __init__(self, extra_headers=None):
+        super(DisconnectFrame, self).__init__('DISCONNECT', headers=extra_headers)
         
 class SendFrame(Frame):
     """ A SEND client frame. """
     
-    def __init__(self, destination, body=None, transaction=None):
+    def __init__(self, destination, body=None, transaction=None, extra_headers=None):
         """
         @param destination: The destination for message.
         @type destionaton: C{str}
@@ -253,7 +253,7 @@ class SendFrame(Frame):
         @param transaction: (optional) transaction identifier.
         @type transaction: C{str}
         """
-        super(SendFrame, self).__init__('SEND', body=body)
+        super(SendFrame, self).__init__('SEND', headers=extra_headers, body=body)
         self.headers['content-length'] = HeaderValue(calculator=lambda: len(self.body))
         self.headers['destination'] = destination
         if transaction:
@@ -262,7 +262,7 @@ class SendFrame(Frame):
 class SubscribeFrame(Frame):
     """ A SUBSCRIBE client frame. """
     
-    def __init__(self, destination, ack=None, id=None, selector=None):
+    def __init__(self, destination, ack=None, id=None, selector=None, extra_headers=None):
         """
         @param destination: The destination being subscribed to.
         @type destionaton: C{str}
@@ -276,7 +276,7 @@ class SubscribeFrame(Frame):
         @param selector: A SQL-92 selector for content-based routing (if supported by broker). 
         @type selector: C{str}
         """
-        super(SubscribeFrame, self).__init__('SUBSCRIBE')
+        super(SubscribeFrame, self).__init__('SUBSCRIBE', headers=extra_headers)
         self.headers['destination'] = destination
         if ack is not None:
             self.headers['ack'] = ack
@@ -288,7 +288,7 @@ class SubscribeFrame(Frame):
 class UnsubscribeFrame(Frame):
     """ An UNSUBSCRIBE client frame. """
     
-    def __init__(self, destination=None, id=None):
+    def __init__(self, destination=None, id=None, extra_headers=None):
         """
         @param destination: The destination being unsubscribed from.
         @type destionaton: C{str}
@@ -298,7 +298,7 @@ class UnsubscribeFrame(Frame):
         
         @raise ValueError: If neither destination nor id are specified.
         """
-        super(UnsubscribeFrame, self).__init__('UNSUBSCRIBE')
+        super(UnsubscribeFrame, self).__init__('UNSUBSCRIBE', headers=extra_headers)
         if not destination and not id:
             raise ValueError("Must specify destination or id for unsubscribe request.")
         
@@ -310,37 +310,40 @@ class UnsubscribeFrame(Frame):
 class BeginFrame(Frame):
     """ A BEGIN client frame. """
     
-    def __init__(self, transaction):
+    def __init__(self, transaction, extra_headers=None):
         """
         @param transaction: The transaction identifier.
         @type transaction: C{str}
         """
-        super(BeginFrame, self).__init__('BEGIN', headers={'transaction': transaction})
+        super(BeginFrame, self).__init__('BEGIN', headers=extra_headers)
+        self.headers['transaction'] = transaction
 
 class CommitFrame(Frame):
     """ A COMMIT client frame. """
     
-    def __init__(self, transaction):
+    def __init__(self, transaction, extra_headers=None):
         """
         @param transaction: The transaction identifier.
         @type transaction: C{str}
         """
-        super(CommitFrame, self).__init__('COMMIT', headers={'transaction': transaction})
+        super(CommitFrame, self).__init__('COMMIT', headers=extra_headers)
+        self.headers['transaction'] = transaction
 
 class AbortFrame(Frame):
     """ An ABORT client frame. """
     
-    def __init__(self, transaction):
+    def __init__(self, transaction, extra_headers=None):
         """
         @param transaction: The transaction identifier.
         @type transaction: C{str}
         """
-        super(AbortFrame, self).__init__('ABORT', headers={'transaction': transaction})
+        super(AbortFrame, self).__init__('ABORT', headers=extra_headers)
+        self.headers['transaction'] = transaction
         
 class AckFrame(Frame):
     """ An ACK client frame. """
     
-    def __init__(self, message_id, transaction=None):
+    def __init__(self, message_id, transaction=None, extra_headers=None):
         """
         @param message_id: The message ID being acknowledged.
         @type message_id: C{str}
@@ -348,8 +351,7 @@ class AckFrame(Frame):
         @param transaction: The transaction identifier.
         @type transaction: C{str}
         """
-        super(AckFrame, self).__init__('ACK')
+        super(AckFrame, self).__init__('ACK', headers=extra_headers)
         self.headers['message-id'] = message_id
         if transaction:
-
             self.headers['transaction'] = transaction
