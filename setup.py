@@ -1,17 +1,11 @@
 """
-python-stomp is a STOMP message client written in Python.
+stompclient is a STOMP message client written in Python.
 
-This project started as a fork of the stompy project by Benjamin W. Smith
-U{https://bitbucket.org/asksol/python-stomp} but has evolved into its
-own fairly distinctive codebase, which combines aspects of the original project
-with features from Stomper and CoilMQ.
-
-The goals of this project are:
-  1. To provide a minimal (publisher-only) client API to stomp servers.
-  2. To add features such as auto-reconnect and thread-local connection pools (inspired
-  by Redis client).
-  3. To provide a core set of STOMP model and utility classes (such as Frame and 
-  StompBuffer) that can be reused by other projects.
+stompclient supports bot simplex (publisher-only) and duplex (publish-subscribe)
+communication with STOMP servers. This project started as a fork of the stompy
+project by Benjamin W. Smith U{https://bitbucket.org/asksol/python-stomp} but 
+has evolved into a very distinct codebase, which combines a few  aspects of 
+stompy with features from Stomper and CoilMQ.
 """
 from setuptools import setup, find_packages
 
