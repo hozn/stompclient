@@ -1,5 +1,5 @@
 """
-Tests for the simple (publish-only) client.
+Tests for the publish-subscribe client implementations.
 """
 import abc
 import time
