@@ -3,6 +3,7 @@ Clients that support both sending and receiving messages (produce & consume).
 """
 import abc
 import threading
+import warnings
 from copy import copy
 from Queue import Queue, Empty
 
@@ -163,7 +164,14 @@ class QueueingDuplexClient(BaseBlockingDuplexClient):
         """
         connect = frame.ConnectFrame(login, passcode, extra_headers=extra_headers)
         self.send_frame(connect)
-        return self.connected_queue.get(timeout=self.queue_timeout)
+        if not self.listening_event.is_set():
+            self.log.warning("Cannot deliver connection response; listening loop is not running.")
+            warnings.warn("Cannot deliver connection response; listening loop is not running.")
+        else:
+            try:
+                return self.connected_queue.get(timeout=self.queue_timeout)
+            except Empty:
+                raise Exception("Expected CONNECTED frame, but none received.")
         
     def subscribe(self, destination, extra_headers=None):
         """
@@ -219,7 +227,10 @@ class QueueingDuplexClient(BaseBlockingDuplexClient):
             self.connection.send(str(frame))
             
         if need_receipt:
-            return self.receipt_queue.get(timeout=self.queue_timeout) 
+            try:
+                return self.receipt_queue.get(timeout=self.queue_timeout)
+            except Empty:
+                raise Exception("Expected RECEIPT response frame, but none received.")
         
 
 class PublishSubscribeClient(QueueingDuplexClient):
