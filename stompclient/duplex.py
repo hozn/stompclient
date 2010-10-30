@@ -157,7 +157,10 @@ class QueueingDuplexClient(BaseBlockingDuplexClient):
     
     def connect(self, login=None, passcode=None, extra_headers=None):
         """
-        Get connection and send CONNECT frame to the STOMP server. 
+        Send CONNECT frame to the STOMP server and return CONNECTED frame (if possible). 
+        
+        This method will issue a warning (C{warnings.warn}) if the listener loop
+        is not running.
         
         @return: The CONNECTED frame from the server.
         @rtype: L{stompclient.frame.Frame}

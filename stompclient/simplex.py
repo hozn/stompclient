@@ -71,7 +71,7 @@ class BaseClient(object):
     
     def connect(self, login=None, passcode=None, extra_headers=None):
         """
-        Get connection and send CONNECT frame to the STOMP server. 
+        Send CONNECT frame to the STOMP server. 
         """
         connect = frame.ConnectFrame(login, passcode)
         return self.send_frame(connect)
