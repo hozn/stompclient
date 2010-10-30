@@ -201,14 +201,18 @@ class QueueingDuplexClient(BaseBlockingDuplexClient):
             except Empty:
                 raise Exception("Expected CONNECTED frame, but none received.")
         
-    def subscribe(self, destination, extra_headers=None):
+    def subscribe(self, destination, ack=None, extra_headers=None):
         """
         Subscribe to a given destination.
         
         @param destination: The destination "path" to subscribe to.
         @type destination: C{str}
+        
+        @param ack: If set to 'client' will require clients to explicitly L{ack} any 
+                    frames received (in order for server to consider them delivered).
+        @type ack: C{str}
         """
-        subscribe = frame.SubscribeFrame(destination, extra_headers=extra_headers)
+        subscribe = frame.SubscribeFrame(destination, ack=ack, extra_headers=extra_headers)
         res = self.send_frame(subscribe)
         with self.subscription_lock:
             self.subscribed_destinations[destination] = True
@@ -296,7 +300,7 @@ class PublishSubscribeClient(QueueingDuplexClient):
         else:
             self.log.info("Ignoring frame from server: %s" % frame)
     
-    def subscribe(self, destination, callback, extra_headers=None):
+    def subscribe(self, destination, callback, ack=None, extra_headers=None):
         """
         Subscribe to a given destination with specified callback function.
         
@@ -308,8 +312,12 @@ class PublishSubscribeClient(QueueingDuplexClient):
         @param callback: The callable that will be sent frames received at 
                             specified destination.
         @type callback: C{callable} 
+        
+        @param ack: If set to 'client' will require clients to explicitly L{ack} any 
+                    frames received (in order for server to consider them delivered).
+        @type ack: C{str} 
         """
-        subscribe = frame.SubscribeFrame(destination, extra_headers=extra_headers)
+        subscribe = frame.SubscribeFrame(destination, ack=ack, extra_headers=extra_headers)
         res = self.send_frame(subscribe)
         with self.subscription_lock:
             self.subscribed_destinations[destination] = callback
