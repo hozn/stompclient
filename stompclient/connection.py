@@ -107,9 +107,9 @@ class Connection(object):
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.connect((self.host, self.port))
         except socket.error, exc:
-            raise self.ConnectionError(*exc.args)
+            raise ConnectionError(*exc.args)
         except socket.timeout, exc:
-            raise self.ConnectionTimeoutError(*exc.args)
+            raise ConnectionTimeoutError(*exc.args)
         
         sock.setsockopt(socket.SOL_TCP, socket.TCP_NODELAY, 1)
         sock.settimeout(self.socket_timeout)
