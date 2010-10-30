@@ -28,6 +28,21 @@ limitations under the License."""
 class BaseBlockingDuplexClient(BaseClient):
     """
     Base class for STOMP client that uses listener loop to receive frames.
+    
+    This client uses the L{listen_forever} method to receive frames from the server.  Typically,
+    this would be run in its own thread::
+        
+        listener_thread = threading.Thread(target=client.listen_forever)
+        listener_thread.start()
+        client.listening_event.wait()
+    
+    @ivar listening_event: A threading event that will be set when the listening loop is running,
+                            meaning that client is receiving frames.
+    @type listening_event: C{threading.Event}
+    
+    @ivar shutdown_event: An event that will be set when the listening loop should terminate.  This 
+                            is set internally by the L{disconnect} method.
+    @type shutdown_event: C{threading.Event}
     """
     __metaclass__ = abc.ABCMeta
     
