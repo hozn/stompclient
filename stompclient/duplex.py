@@ -43,6 +43,12 @@ class BaseBlockingDuplexClient(BaseClient):
     @ivar shutdown_event: An event that will be set when the listening loop should terminate.  This 
                             is set internally by the L{disconnect} method.
     @type shutdown_event: C{threading.Event}
+    
+    @ivar subscribed_destinations: A C{dict} of subscribed destinations (only keys are required in base impl).
+    @type subscribed_destinations: C{dict} of C{str} to C{bool}
+    
+    @ivar subscription_lock: A C{threading.RLock} used to guard access to L{subscribed_destionations} property.
+    @type subscription_lock: C{threading.RLock}
     """
     __metaclass__ = abc.ABCMeta
     
@@ -52,6 +58,8 @@ class BaseBlockingDuplexClient(BaseClient):
         super(BaseBlockingDuplexClient, self).__init__(host, port=port, socket_timeout=socket_timeout, connection_pool=connection_pool)
         self.shutdown_event = threading.Event()
         self.listening_event = threading.Event()
+        self.subscription_lock = threading.RLock()
+        self.subscribed_destinations = {}
         
     @abc.abstractmethod
     def dispatch_frame(self, frame):
@@ -90,10 +98,11 @@ class BaseBlockingDuplexClient(BaseClient):
         Disconnect from the server.
         """
         try:
-            # Need a copy since unsubscribe() removes the destination from the collection.
-            subcpy = copy(self.subscribed_destinations)
-            for destination in subcpy:
-                self.unsubscribe(destination)
+            with self.subscription_lock:
+                # Need a copy since unsubscribe() removes the destination from the collection.
+                subcpy = copy(self.subscribed_destinations)
+                for destination in subcpy:
+                    self.unsubscribe(destination)
             disconnect = frame.DisconnectFrame(extra_headers=extra_headers)
             result = self.send_frame(disconnect)
             self.connection.disconnect()
@@ -130,9 +139,6 @@ class QueueingDuplexClient(BaseBlockingDuplexClient):
     @ivar error_queue: A queue of ERROR frames from the server.
     @type error_queue: C{Queue.Queue} 
     
-    @ivar subscribed_destinations: A C{dict} of subscribed destinations (only keys are used in this impl).
-    @type subscribed_destinations: C{dict} of C{str} to C{bool}
-    
     @ivar queue_timeout: How long should calls block on fetching frames from queue before timeout and exception?
     @type queue_timeout: C{float}  
     """
@@ -143,7 +149,7 @@ class QueueingDuplexClient(BaseBlockingDuplexClient):
         self.message_queue = Queue()
         self.receipt_queue = Queue()
         self.error_queue = Queue()
-        self.subscribed_destinations = {}
+        
         self.queue_timeout = queue_timeout
         if isinstance(connection_pool, threading.local):
             raise Exception("Cannot use a thread-local pool for duplex clients.")
@@ -158,11 +164,15 @@ class QueueingDuplexClient(BaseBlockingDuplexClient):
         if frame.command == 'RECEIPT':
             self.receipt_queue.put(frame)
         elif frame.command == 'MESSAGE':
-            if frame.destination in self.subscribed_destinations:
+            with self.subscription_lock:
+                if frame.destination in self.subscribed_destinations:
+                    enqueue = True
+                else:
+                    enqueue = False
+                    if self.debug:
+                        self.log.debug("Ignoring frame for unsubscribed destination: %s" % frame)
+            if enqueue:
                 self.message_queue.put(frame)
-            else:
-                if self.debug:
-                    self.log.debug("Ignoring frame for unsubscribed destination: %s" % frame)
         elif frame.command == 'ERROR':
             self.error_queue.put(frame)
         elif frame.command == 'CONNECTED':
@@ -200,7 +210,8 @@ class QueueingDuplexClient(BaseBlockingDuplexClient):
         """
         subscribe = frame.SubscribeFrame(destination, extra_headers=extra_headers)
         res = self.send_frame(subscribe)
-        self.subscribed_destinations[destination] = True
+        with self.subscription_lock:
+            self.subscribed_destinations[destination] = True
         return res
         
     def unsubscribe(self, destination, extra_headers=None):
@@ -217,7 +228,8 @@ class QueueingDuplexClient(BaseBlockingDuplexClient):
         """
         unsubscribe = frame.UnsubscribeFrame(destination, extra_headers=extra_headers)
         res = self.send_frame(unsubscribe)
-        self.subscribed_destinations.pop(destination)
+        with self.subscription_lock:
+            self.subscribed_destinations.pop(destination)
         return res
 
     def send_frame(self, frame):
@@ -269,11 +281,14 @@ class PublishSubscribeClient(QueueingDuplexClient):
         if frame.command == 'RECEIPT':
             self.receipt_queue.put(frame)
         elif frame.command == 'MESSAGE':
-            if frame.destination in self.subscribed_destinations:
-                self.subscribed_destinations[frame.destination](frame)
-            else:
-                if self.debug:
-                    self.log.debug("Ignoring frame for unsubscribed destination: %s" % frame)
+            with self.subscription_lock:
+                if frame.destination in self.subscribed_destinations:
+                    handler = self.subscribed_destinations[frame.destination]
+                else:
+                    handler = lambda f: None
+                    if self.debug:
+                        self.log.debug("Ignoring frame for unsubscribed destination: %s" % frame)
+            handler(frame)
         elif frame.command == 'ERROR':
             self.error_queue.put(frame)
         elif frame.command == 'CONNECTED':
@@ -296,5 +311,6 @@ class PublishSubscribeClient(QueueingDuplexClient):
         """
         subscribe = frame.SubscribeFrame(destination, extra_headers=extra_headers)
         res = self.send_frame(subscribe)
-        self.subscribed_destinations[destination] = callback
+        with self.subscription_lock:
+            self.subscribed_destinations[destination] = callback
         return res
