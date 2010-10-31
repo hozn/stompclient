@@ -8,7 +8,7 @@ from stompclient.frame import Frame
 from stompclient.util import FrameBuffer
 
 __authors__ = ['"Hans Lellelid" <hans@xmpl.org>']
-__copyright__ = "Copyright 2009 Hans Lellelid"
+__copyright__ = "Copyright 2010 Hans Lellelid"
 __license__ = """Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
