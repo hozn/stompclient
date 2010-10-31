@@ -13,7 +13,7 @@ __authors__ = ['"Hans Lellelid" <hans@xmpl.org>']
 __copyright__ = "Copyright 2010 Hans Lellelid"
 
 setup(name='stompclient',
-      version="0.1",
+      version="0.2",
       description=__doc__,
       author="Hans Lellelid",
       author_email="hans@xmpl.org",
