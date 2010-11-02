@@ -79,11 +79,9 @@ class BaseBlockingDuplexClient(BaseClient):
         """
         self.listening_event.set()
         self.shutdown_event.clear()
-        # print "Cleared shutdown event in %s, now=%r" % (threading.current_thread().name, self.shutdown_event.is_set())
         try:
             while not self.shutdown_event.is_set():
                 frame = self.connection.read()
-                # print "Got frame: %r (thread: %s)" % (frame, threading.current_thread().name) # TODO: Remove this.
                 if frame:
                     self.log.debug("Processing frame: %s" % frame)
                     self.dispatch_frame(frame)
