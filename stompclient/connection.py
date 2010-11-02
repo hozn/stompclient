@@ -119,7 +119,6 @@ class Connection(object):
         """
         Disconnect from the server, if connected.
         """
-        print "Trying to disconnect."
         if self._sock is None:
             return
         try:
