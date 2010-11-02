@@ -54,7 +54,7 @@ class BaseBlockingDuplexClient(BaseClient):
     
     debug = False
     
-    def __init__(self, host, port=61613, socket_timeout=None, connection_pool=None):
+    def __init__(self, host, port=61613, socket_timeout=3.0, connection_pool=None):
         super(BaseBlockingDuplexClient, self).__init__(host, port=port, socket_timeout=socket_timeout, connection_pool=connection_pool)
         self.shutdown_event = threading.Event()
         self.listening_event = threading.Event()
@@ -141,7 +141,7 @@ class QueueingDuplexClient(BaseBlockingDuplexClient):
     @type queue_timeout: C{float}  
     """
     
-    def __init__(self, host, port=61613, socket_timeout=None, connection_pool=None, queue_timeout=3.0):
+    def __init__(self, host, port=61613, socket_timeout=3.0, connection_pool=None, queue_timeout=5.0):
         super(QueueingDuplexClient, self).__init__(host, port=port, socket_timeout=socket_timeout, connection_pool=connection_pool)
         self.connected_queue = Queue()
         self.message_queue = Queue()
