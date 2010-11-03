@@ -93,7 +93,7 @@ class BaseBlockingDuplexClient(BaseClient):
     
     def disconnect(self, extra_headers=None):
         """
-        Disconnect from the server.
+        Sends DISCONNECT frame and disconnect from the server.
         """
         try:
             with self.subscription_lock:
@@ -109,7 +109,7 @@ class BaseBlockingDuplexClient(BaseClient):
             pass
         finally:
             self.shutdown_event.set()
- 
+            
 class QueueingDuplexClient(BaseBlockingDuplexClient):
     """
     A STOMP client that supports both producer and consumer roles, depositing received
@@ -238,8 +238,12 @@ class QueueingDuplexClient(BaseBlockingDuplexClient):
         """
         Send a frame to the STOMP server.
         
-        This implementation does support the 'receipt' header, blocking on the
+        This implementation *does* support the 'receipt' header, blocking on the
         receipt queue until a receipt frame is received.
+        
+        This implementation does NOT attempt to disconnect/reconnect if connection error
+        received, because disconnecting the socket royally pisses off the listen_forever blocking
+        loop.
         
         @param frame: The frame instance to send.
         @type frame: L{stomp.frame.Frame}
@@ -251,13 +255,8 @@ class QueueingDuplexClient(BaseBlockingDuplexClient):
         if need_receipt and not self.listening_event.is_set():
             raise Exception("Receipt requested, but cannot deliver; listening loop is not running.")
         
-        try:
-            self.connection.send(frame)
-        except ConnectionError:
-            self.log.warning("Error sending frame, attempting to resend.", exc_info=True)
-            self.connection.disconnect()
-            self.connection.send(str(frame))
-            
+        self.connection.send(frame)
+        
         if need_receipt:
             try:
                 return self.receipt_queue.get(timeout=self.queue_timeout)
