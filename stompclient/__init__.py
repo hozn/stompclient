@@ -1,2 +1,3 @@
 from stompclient.simplex import PublishClient
 from stompclient.duplex import PublishSubscribeClient
+from stompclient.connection import ConnectionPool, ThreadLocalConnectionPool
