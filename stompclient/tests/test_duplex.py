@@ -183,6 +183,33 @@ class QueueingDuplexClientTest(DuplexClientTestBase):
         
         pushed = self.client.message_queue.get(timeout=1.0)
         self.assertEquals(messageframe, pushed)
+    
+    def test_ack(self):
+        """ Test ACK """
+        dest = '/foo/bar'
+        body = "Message #1"
+        
+        self.client.subscribe(dest, ack='client')
+        self.client.send(dest, body)
+        
+        messageframe = frame.MessageFrame(dest, body=body)
+        self.mock_frame_queue.put(messageframe)
+        
+        (sentframe,) = self.mockconn.send.call_args[0]
+        
+        expected = frame.SendFrame(dest, body=body)
+        
+        self.assertEquals(str(expected), str(sentframe))
+        
+        pushed = self.client.message_queue.get(timeout=1.0)
+        self.assertEquals(messageframe, pushed)
+        
+        self.client.ack(messageframe.message_id)
+        
+        (sentframe,) = self.mockconn.send.call_args[0]
+        
+        expected = frame.AckFrame(messageframe.message_id)
+        self.assertEquals(str(expected), str(sentframe))
         
     def test_send_tx(self):
         """ Make sure that transaction IDs pass through to delivered frames. """
@@ -195,7 +222,7 @@ class QueueingDuplexClientTest(DuplexClientTestBase):
         
         self.assertEquals(str(expected), str(sentframe))        
         
-        
+    
         
 class PublishSubscribeClientTest(DuplexClientTestBase):
     
