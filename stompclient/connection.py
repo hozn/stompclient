@@ -96,6 +96,7 @@ class Connection(object):
         self.socket_timeout = socket_timeout
         self._sock = None
         self._buffer = FrameBuffer()
+        self._disconnected = threading.Event()
 
     def connect(self):
         """
@@ -114,7 +115,8 @@ class Connection(object):
         sock.setsockopt(socket.SOL_TCP, socket.TCP_NODELAY, 1)
         sock.settimeout(self.socket_timeout)
         self._sock = sock
-
+        self._disconnected.clear()
+        
     def disconnect(self, conf=None):
         """
         Disconnect from the server, if connected.
@@ -127,6 +129,7 @@ class Connection(object):
             pass
         self._sock = None
         self._buffer.clear()
+        self._disconnected.set()
     
     def send(self, frame):
         """
@@ -163,7 +166,7 @@ class Connection(object):
             # Read bytes from socket until we have read a frame (or timeout out) and then return it.
             received_frame = None
             try:
-                while True:
+                while not self._disconnected.is_set():
                     bytes = self._sock.recv(8192)
                     self._buffer.append(bytes)
                     received_frame = self._buffer.extract_frame()
