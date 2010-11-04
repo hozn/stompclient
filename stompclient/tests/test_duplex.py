@@ -86,7 +86,9 @@ class QueueingDuplexClientTest(DuplexClientTestBase):
                
     def test_disconnect(self):
         """ Make sure that disconnect results in expected frames. """
+        self.mockconn.connected = True
         self.client.disconnect()
+        print self.mockconn.send.call_args
         
         (sentframe,) = self.mockconn.send.call_args[0]
         expected = frame.DisconnectFrame()

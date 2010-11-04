@@ -127,9 +127,11 @@ class Connection(object):
     def disconnect(self, conf=None):
         """
         Disconnect from the server, if connected.
+        
+        @raise NotConnectedError: If the connection is not currently connected. 
         """
         if self._sock is None:
-            return
+            raise NotConnectedError()
         try:
             self._sock.close()
         except socket.error:

@@ -81,7 +81,10 @@ class BaseClient(object):
         if self.connection.connected:
             disconnect = frame.DisconnectFrame(extra_headers=extra_headers)
             result = self.send_frame(disconnect)
-            self.connection.disconnect()
+            try:
+                self.connection.disconnect()
+            except NotConnectedError:
+                pass
             return result
         
     def send(self, destination, body=None, transaction=None, extra_headers=None):

@@ -96,7 +96,7 @@ class BaseBlockingDuplexClient(BaseClient):
         Sends DISCONNECT frame and disconnect from the server.
         """
         try:
-            if not self.connection.connected:
+            if self.connection.connected:
                 with self.subscription_lock:
                     # Need a copy since unsubscribe() removes the destination from the collection.
                     subcpy = copy(self.subscribed_destinations)
@@ -104,7 +104,10 @@ class BaseBlockingDuplexClient(BaseClient):
                         self.unsubscribe(destination)
                 disconnect = frame.DisconnectFrame(extra_headers=extra_headers)
                 result = self.send_frame(disconnect)
-                self.connection.disconnect()
+                try:
+                    self.connection.disconnect()
+                except NotConnectedError:
+                    pass
                 return result
         finally:
             self.shutdown_event.set()
