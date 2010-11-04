@@ -8,6 +8,8 @@ import mock
 import stompclient.connection
 from stompclient.connection import (ThreadLocalConnectionPool, ConnectionPool, Connection, 
                                     ConnectionError, ConnectionTimeoutError, NotConnectedError)
+from stompclient import frame
+
 from stompclient.tests.mockutil import MockingSocketModule
 
 __authors__ = ['"Hans Lellelid" <hans@xmpl.org>']
@@ -108,6 +110,21 @@ class ConnectionTest(TestCase):
         
         self.assertRaises(ConnectionTimeoutError, conn.connect)
     
+    def test_auto_connect(self):
+        """ Test the fact that send and read automatically attempt to connect. """
+        conn = Connection('1.2.3.4', 61613)
+        conn.send("MESSAGE")
+        self.assertTrue(self.mocksocket.connect.called)
+        conn.disconnect()
+        
+        f = frame.ConnectedFrame('my-session-id')
+        self.mocksocket.reset_mock()
+        self.mocksocket.recv.side_effect = lambda len: str(f)
+        
+        result = conn.read()
+        self.assertEquals(str(f), str(result))
+        self.assertTrue(self.mocksocket.connect.called)
+        
     def test_disconnect_notconnected(self):
         conn = Connection('1.2.3.4', 61613)
         self.assertRaises(NotConnectedError, conn.disconnect)
@@ -122,11 +139,8 @@ class ConnectionTest(TestCase):
         conn.disconnect()
         
         self.assertFalse(conn.connected)
-        class F(object):
-            def __str__(self):
-                return "FRAME_STR"
             
-        conn.send(F())
+        conn.send("MESSAGE")
         
         self.assertTrue(self.mocksocket.connect.called)
         self.assertTrue(self.mocksocket.sendall.called)
