@@ -24,11 +24,13 @@ if not found_news:
     warnings.warn('No news for this version found.')
 
 long_description="""
+stompclient provides a simple and lighweight STOMP client API for Python. 
+
 stompclient supports both simplex (publisher-only) and duplex (publish-subscribe)
-communication with STOMP servers. This project started as a fork of the stompy
-project by Benjamin W. Smith U{https://bitbucket.org/asksol/python-stomp} but 
-has evolved into a very distinct codebase, which combines a few  aspects of 
-stompy with features from Stomper and CoilMQ.
+communication with STOMP servers. This project started as a fork of the `stompy
+project by Benjamin W. Smith <https://bitbucket.org/asksol/python-stomp>`_) but 
+has evolved into a very distinct codebase, which combines a few ideas from 
+stompy with features from the Stomper library and CoilMQ broker.
 """
 
 if found_news:
@@ -39,6 +41,7 @@ if found_news:
 setup(name='stompclient',
       version="0.3",
       description=__doc__,
+      long_description=long_description,
       author="Hans Lellelid",
       author_email="hans@xmpl.org",
       packages = find_packages(exclude=['tests', 'ez_setup.py', '*.tests.*', 'tests.*', '*.tests']),
