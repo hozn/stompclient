@@ -78,13 +78,12 @@ class BaseClient(object):
 
     def disconnect(self, conf=None, extra_headers=None):
         """Disconnect from the server."""
-        try:
+        print repr(self.connection.connected)
+        if self.connection.connected:
             disconnect = frame.DisconnectFrame(extra_headers=extra_headers)
             result = self.send_frame(disconnect)
             self.connection.disconnect()
             return result
-        except NotConnectedError:
-            pass
         
     def send(self, destination, body=None, transaction=None, extra_headers=None):
         """
