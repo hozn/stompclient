@@ -39,7 +39,7 @@ if found_news:
     long_description += found_news
     
 setup(name='stompclient',
-      version="0.3",
+      version=version,
       description=__doc__,
       long_description=long_description,
       author="Hans Lellelid",
