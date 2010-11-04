@@ -1,5 +1,5 @@
 """
-stompclient is a STOMP message client written in Python.
+lightweight and extensible STOMP messaging client
 """
 import os.path
 import re
