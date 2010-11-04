@@ -1,8 +1,14 @@
 import threading
 from Queue import Queue
 from unittest import TestCase
+import socket
 
-from stompclient.connection import ThreadLocalConnectionPool, ConnectionPool
+import mock
+
+import stompclient.connection
+from stompclient.connection import (ThreadLocalConnectionPool, ConnectionPool, Connection, 
+                                    ConnectionError, ConnectionTimeoutError, NotConnectedError)
+from stompclient.tests.mockutil import MockingSocketModule
 
 __authors__ = ['"Hans Lellelid" <hans@xmpl.org>']
 __copyright__ = "Copyright 2010 Hans Lellelid"
@@ -58,4 +64,70 @@ class ConnectionPoolTest(TestCase):
         assert c3.host == c2.host
         assert c3.port == c2.port
         
+        
+class ConnectionTest(TestCase):
     
+    def setUp(self):
+        #self.conn._sock = mock.Mock(spec=socket._socketobject)
+        mocksocketmodule = MockingSocketModule()
+        stompclient.connection.socket = mocksocketmodule
+        self.mocksocket = mocksocketmodule.mocksocket
+    
+    def test_connect(self):
+        conn = Connection('1.2.3.4', 61613)
+        
+        conn.connect()
+        print self.mocksocket.method_calls
+        
+        self.assertTrue(self.mocksocket.connect.called)
+        self.assertEquals((('1.2.3.4', 61613),), self.mocksocket.connect.call_args[0])
+        
+        self.mocksocket.reset_mock()
+        conn.connect()
+        self.assertFalse(self.mocksocket.connect.called)
+    
+    def test_connected(self):
+        conn = Connection('1.2.3.4', 61613)
+        conn.connect()
+        self.assertTrue(conn.connected)
+        
+        conn.disconnect()
+        self.assertFalse(conn.connected)
+        
+        conn.connect()
+        self.assertTrue(conn.connected)
+        
+    def test_connect_exc(self):
+        conn = Connection('1.2.3.4', 61613)
+        
+        self.mocksocket.connect.side_effect = socket.error
+        
+        self.assertRaises(ConnectionError, conn.connect)
+        
+        self.mocksocket.connect.side_effect = socket.timeout
+        
+        self.assertRaises(ConnectionTimeoutError, conn.connect)
+    
+    def test_disconnect_notconnected(self):
+        conn = Connection('1.2.3.4', 61613)
+        self.assertRaises(NotConnectedError, conn.disconnect)
+        conn.connect()
+        conn.disconnect()
+        self.assertRaises(NotConnectedError, conn.disconnect)
+        
+    def test_disconnect_reconnect(self):
+        conn = Connection('1.2.3.4', 61613)
+        conn.connect()
+        
+        conn.disconnect()
+        
+        self.assertFalse(conn.connected)
+        class F(object):
+            def __str__(self):
+                return "FRAME_STR"
+            
+        conn.send(F())
+        
+        self.assertTrue(self.mocksocket.connect.called)
+        self.assertTrue(self.mocksocket.sendall.called)
+        

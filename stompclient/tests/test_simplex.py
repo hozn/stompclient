@@ -78,7 +78,7 @@ class SimplexClientTest(TestCase):
         self.client.disconnect()
         self.assertFalse(self.mockconn.send.called)
         self.assertFalse(self.mockconn.disconnect.called)
-        
+     
     def test_send(self):
         """ Test send. """
         dest = '/foo/bar'

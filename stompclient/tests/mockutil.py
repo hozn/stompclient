@@ -1,6 +1,8 @@
 """
 Utilities for working with mock objects.
 """
+import socket
+
 from mock import Mock
 
 from stompclient.connection import Connection
@@ -36,3 +38,17 @@ class MockingConnectionPool(object):
     def get_all_connections(self):
         "Return a list of all connection objects the manager knows about"
         return [self.connection]
+    
+class MockingSocketModule(object):
+    """
+    A class that replaces the C{socket} module to return C{mock.Mock} instances in response to 
+    C{socket.socket()} invocation.
+    """
+    def __init__(self):
+        self.mocksocket = Mock(spec=socket._socketobject)
+        
+    def socket(self, *args, **kwargs):
+        return self.mocksocket
+    
+    def __getattr__(self, name):
+        return getattr(socket, name)
