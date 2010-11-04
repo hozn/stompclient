@@ -76,6 +76,7 @@ class ConnectionTest(TestCase):
         self.mocksocket = mocksocketmodule.mocksocket
     
     def test_connect(self):
+        """ Test basic connection functionality. """
         conn = Connection('1.2.3.4', 61613)
         
         conn.connect()
@@ -89,6 +90,7 @@ class ConnectionTest(TestCase):
         self.assertFalse(self.mocksocket.connect.called)
     
     def test_connected(self):
+        """ Test that 'connected' property reflects connection status. """
         conn = Connection('1.2.3.4', 61613)
         conn.connect()
         self.assertTrue(conn.connected)
@@ -100,6 +102,7 @@ class ConnectionTest(TestCase):
         self.assertTrue(conn.connected)
         
     def test_connect_exc(self):
+        """ Test to ensure socket.error exceptions get wrapped. """
         conn = Connection('1.2.3.4', 61613)
         
         self.mocksocket.connect.side_effect = socket.error
@@ -126,6 +129,7 @@ class ConnectionTest(TestCase):
         self.assertTrue(self.mocksocket.connect.called)
         
     def test_disconnect_notconnected(self):
+        """ Attempting to disconnect when not connected should raise exception. """
         conn = Connection('1.2.3.4', 61613)
         self.assertRaises(NotConnectedError, conn.disconnect)
         conn.connect()
@@ -133,6 +137,7 @@ class ConnectionTest(TestCase):
         self.assertRaises(NotConnectedError, conn.disconnect)
         
     def test_disconnect_reconnect(self):
+        """ Test disconnect and reconnect behavior. """
         conn = Connection('1.2.3.4', 61613)
         conn.connect()
         
