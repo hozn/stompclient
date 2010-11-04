@@ -4,6 +4,7 @@ import errno
 import threading
 
 from stompclient.util import FrameBuffer
+from stompclient.exceptions import ConnectionError, ConnectionTimeoutError, NotConnectedError
 
 __authors__ = ['"Hans Lellelid" <hans@xmpl.org>', 'Andy McCurdy (redis)']
 __copyright__ = "Copyright 2010 Hans Lellelid, Copyright 2010 Andy McCurdy"
@@ -18,18 +19,6 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License."""
-
-class NotConnectedError(Exception):
-    """No longer connected to the STOMP server."""
-
-
-class ConnectionError(socket.error):
-    """Couldn't connect to the STOMP server."""
-
-
-class ConnectionTimeoutError(socket.timeout):
-    """Timed-out while establishing connection to the STOMP server."""
-
 
 class ConnectionPool(object):
     """

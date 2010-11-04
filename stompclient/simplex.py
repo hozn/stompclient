@@ -5,7 +5,8 @@ import abc
 import logging
 
 from stompclient import frame
-from stompclient.connection import ConnectionPool, ThreadLocalConnectionPool, ConnectionError, NotConnectedError
+from stompclient.connection import ConnectionPool, ThreadLocalConnectionPool
+from stompclient.exceptions import ConnectionError, NotConnectedError
 
 __authors__ = ['"Hans Lellelid" <hans@xmpl.org>', 'Benjamin W. Smith (stompy)']
 __copyright__ = "Copyright 2010 Hans Lellelid, Copyright 2008 Ricky Iacovou, Copyright 2009 Benjamin W. Smith"

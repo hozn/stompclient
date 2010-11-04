@@ -9,7 +9,7 @@ from Queue import Queue, Empty
 
 from stompclient import frame
 from stompclient.simplex import BaseClient
-from stompclient.connection import ConnectionError, NotConnectedError
+from stompclient.exceptions import NotConnectedError
 
 __authors__ = ['"Hans Lellelid" <hans@xmpl.org>']
 __copyright__ = "Copyright 2010 Hans Lellelid"

@@ -6,8 +6,8 @@ import socket
 import mock
 
 import stompclient.connection
-from stompclient.connection import (ThreadLocalConnectionPool, ConnectionPool, Connection, 
-                                    ConnectionError, ConnectionTimeoutError, NotConnectedError)
+from stompclient.connection import ThreadLocalConnectionPool, ConnectionPool, Connection
+from stompclient.exceptions import ConnectionError, ConnectionTimeoutError, NotConnectedError
 from stompclient import frame
 
 from stompclient.tests.mockutil import MockingSocketModule

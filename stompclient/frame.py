@@ -5,6 +5,8 @@ This is a mixture of code from the stomper project and the stompy project codeba
 """
 import uuid
 
+from stompclient.exceptions import FrameError
+ 
 __authors__ = ['"Hans Lellelid" <hans@xmpl.org>', 'Ricky Iacovou (stomper)', 'Benjamin W. Smith (stompy)']
 __copyright__ = "Copyright 2010 Hans Lellelid, Copyright 2008 Ricky Iacovou, Copyright 2009 Benjamin W. Smith"
 __license__ = """Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,11 +28,6 @@ VALID_COMMANDS = [
     'SEND', 'SUBSCRIBE', 'UNSUBSCRIBE',
     'RECEIPT', 'ERROR',    
 ]
-
-class FrameError(Exception):
-    """
-    Raise for problem with frame generation or parsing.
-    """
 
 class Frame(object):
     """

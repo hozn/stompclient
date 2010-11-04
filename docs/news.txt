@@ -1,0 +1,10 @@
+News: stompclient
+=================
+
+.. contents::
+
+0.3
+---
+
+* Added a changelog ;)
+* Moved exceptions into new stompclient.exceptions module.
