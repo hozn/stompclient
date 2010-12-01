@@ -3,6 +3,12 @@ News: stompclient
 
 .. contents::
 
+0.3.1
+-----
+
+* Added synchronization to Connection class to avoid race conditions on
+  connect/disconnect.
+
 0.3
 ---
 
