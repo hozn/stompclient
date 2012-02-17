@@ -10,7 +10,7 @@ from setuptools import setup, find_packages
 __authors__ = ['"Hans Lellelid" <hans@xmpl.org>']
 __copyright__ = "Copyright 2010 Hans Lellelid"
 
-version = '0.3.1'
+version = '0.3.2'
 
 news = os.path.join(os.path.dirname(__file__), 'docs', 'news.txt')
 news = open(news).read()
