@@ -3,6 +3,12 @@ News: stompclient
 
 .. contents::
 
+0.3.2
+-----
+
+* Merged change from bmentges to use tests_require instead of install_requires
+  (issue 6).
+
 0.3.1
 -----
 
