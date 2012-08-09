@@ -88,6 +88,14 @@ class BaseClient(object):
                 pass
             return result
         
+    def __enter__(self):
+        self.connect()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.disconnect()
+
+
     def send(self, destination, body=None, transaction=None, extra_headers=None):
         """
         Sends a message to STOMP server.
