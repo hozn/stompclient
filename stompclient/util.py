@@ -27,17 +27,17 @@ class FrameBuffer(object):
     
     This version of the parser also assumes that stomp messages with no content-lengh
     end in a simple \\x00 char, not \\x00\\n as is assumed by
-    C{stomper.stompbuffer.StompBuffer}. Additionally, this class differs from Stomper version 
+    `stomper.stompbuffer.StompBuffer`. Additionally, this class differs from Stomper version 
     by conforming to PEP-8 coding style.
     
     This class can be used to smooth over a transport that may provide partial frames (or
     may provide multiple frames in one data buffer).
     
-    @ivar buffer: The internal byte buffer.
-    @type buffer: C{str}
+    :ivar buffer: The internal byte buffer.
+    :type buffer: str
     
-    @ivar debug: Log extra parsing debug (logs will be DEBUG level). 
-    @type debug: C{bool} 
+    :ivar debug: Log extra parsing debug (logs will be DEBUG level). 
+    :type debug: bool 
     """
         
     # regexp to check that the buffer starts with a command.
@@ -65,15 +65,15 @@ class FrameBuffer(object):
         
     def buffer_len(self):
         """
-        @return: Number of bytes in the internal buffer.
-        @rtype: C{int}
+        :return: Number of bytes in the internal buffer.
+        :rtype: int
         """
         return len(self.buffer)
     
     def buffer_empty(self):
         """
-        @return: C{True} if buffer is empty, C{False} otherwise. 
-        @rtype: C{bool}
+        :return: `True` if buffer is empty, `False` otherwise. 
+        :rtype: bool
         """
         return not bool(self.buffer)
         
@@ -81,8 +81,8 @@ class FrameBuffer(object):
         """
         Appends bytes to the internal buffer (may or may not contain full stomp frames).
         
-        @param data: The bytes to append.
-        @type data: C{str}
+        :param data: The bytes to append.
+        :type data: str
         """
         self.buffer += data
 
@@ -96,8 +96,8 @@ class FrameBuffer(object):
         should therefore call this method in a loop (or use iterator
         functionality exposed by class) until None returned.
         
-        @return: The next complete frame in the buffer.
-        @rtype: L{stomp.frame.Frame}
+        :return: The next complete frame in the buffer.
+        :rtype: :class:`stompclient.frame.Frame`
         """
         (mbytes, hbytes) = self._find_message_bytes(self.buffer)
         if not mbytes:
@@ -132,7 +132,7 @@ class FrameBuffer(object):
         """
         Examines passed-in data and returns a tuple of message and header lengths.
         
-        Return data is a C{tuple} in the form (message_length, header_length) where 
+        Return data is a `tuple` in the form (message_length, header_length) where 
         message_length is the length in bytes of the first complete message, if it 
         contains at least one message, or 0 if it contains no message.
         
@@ -140,8 +140,8 @@ class FrameBuffer(object):
         bytes of the header. If message_length is zero, header_length should
         be ignored.
         
-        @return: A tuple in the form (message_length, header_length)
-        @rtype: C{tuple}
+        :return: A tuple in the form (message_length, header_length)
+        :rtype: `tuple`
         """
 
         # Sanity check. See the docstring for the method to see what it
@@ -301,7 +301,7 @@ class FrameBuffer(object):
         """
         Return the next STOMP message in the buffer (supporting iteration).
         
-        @rtype: L{stomp.frame.Frame}
+        :rtype: :class:`stompclient.frame.Frame`
         """
         msg = self.extract_frame()
         if not msg:

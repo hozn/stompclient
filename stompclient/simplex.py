@@ -26,17 +26,17 @@ class BaseClient(object):
     """
     An abstract STOMP client base class with shared functionality.
     
-    @ivar host: The STOMP server hostname or IP address.
-    @type host: C{str}
+    :ivar host: The STOMP server hostname or IP address.
+    :type host: C{str}
     
-    @ivar port: The STOMP server port.
-    @type port: C{int}
+    :ivar port: The STOMP server port.
+    :type port: C{int}
     
-    @ivar socket_timeout: How long to block on reading from sockets before raising exception.
-    @type socket_timeout: C{float}
+    :ivar socket_timeout: How long to block on reading from sockets before raising exception.
+    :type socket_timeout: C{float}
     
-    @ivar connection_pool: Object responsible for issuing STOMP connections.
-    @type connection_pool: L{stompclient.connection.ConnectionPool}
+    :ivar connection_pool: Object responsible for issuing STOMP connections.
+    :type connection_pool: :class:`stompclient.connection.ConnectionPool`
     """
     __metaclass__ = abc.ABCMeta
 
@@ -44,17 +44,17 @@ class BaseClient(object):
         """
         Initialize STOMP client.
         
-        @param host: The host for stomp server.
-        @type host: C{str}
+        :param host: The host for stomp server.
+        :type host: C{str}
         
-        @param port: THe port for stomp server.
-        @type port: C{int}
+        :param port: THe port for stomp server.
+        :type port: C{int}
         
-        @param socket_timeout: The timeout for underlying socket connection (set to C{None} for no timeout).
-        @type socket_timeout: C{float}
+        :param socket_timeout: The timeout for underlying socket connection (set to C{None} for no timeout).
+        :type socket_timeout: C{float}
         
-        @param connection_pool: A configured connection pool (defaults to non-threadsafe ConnectionPool).
-        @type connection_pool: L{stompclient.connection.ConnectionPool}
+        :param connection_pool: A configured connection pool (defaults to non-threadsafe ConnectionPool).
+        :type connection_pool: :class:`stompclient.connection.ConnectionPool`
         """
         self.log = logging.getLogger('%s.%s' % (self.__class__.__module__, self.__class__.__name__))
         self.connection_pool = connection_pool if connection_pool else ConnectionPool()
@@ -66,7 +66,7 @@ class BaseClient(object):
     def connection(self):
         """
         A connection object from the configured pool.
-        @rtype: L{stompclient.connection.Connection} 
+        :rtype: :class:`stompclient.connection.Connection` 
         """
         return self.connection_pool.get_connection(self.host, self.port, self.socket_timeout)
     
@@ -100,14 +100,14 @@ class BaseClient(object):
         """
         Sends a message to STOMP server.
         
-        @param destination: The destination "path" for message.
-        @type destination: C{str}
+        :param destination: The destination "path" for message.
+        :type destination: C{str}
         
-        @param body: The body (bytes) of the message.
-        @type body: C{str}
+        :param body: The body (bytes) of the message.
+        :type body: C{str}
         
-        @param transaction: (optional) The transaction ID associated with this ACK.
-        @type transaction: C{str}
+        :param transaction: (optional) The transaction ID associated with this ACK.
+        :type transaction: C{str}
         """
         send = frame.SendFrame(destination, body, transaction, extra_headers=extra_headers)
         return self.send_frame(send)
@@ -116,8 +116,8 @@ class BaseClient(object):
         """
         Begin transaction.
         
-        @param transaction: The transaction ID.
-        @type transaction: C{str}
+        :param transaction: The transaction ID.
+        :type transaction: C{str}
         """
         begin = frame.BeginFrame(transaction, extra_headers=extra_headers)
         return self.send_frame(begin)
@@ -126,8 +126,8 @@ class BaseClient(object):
         """
         Commit transaction.
 
-        @param transaction: The transaction ID.
-        @type transaction: C{str}
+        :param transaction: The transaction ID.
+        :type transaction: C{str}
         """
         commit = frame.CommitFrame(transaction, extra_headers=extra_headers)
         return self.send_frame(commit)
@@ -136,8 +136,8 @@ class BaseClient(object):
         """
         Abort (rollback) transaction.
 
-        @param transaction: The transaction ID.
-        @type transaction: C{str}
+        :param transaction: The transaction ID.
+        :type transaction: C{str}
         """
         abort = frame.AbortFrame(transaction, extra_headers=extra_headers)
         return self.send_frame(abort)
@@ -146,8 +146,8 @@ class BaseClient(object):
         """
         Subscribe to a given destination.
         
-        @param destination: The destination "path" to subscribe to.
-        @type destination: C{str}
+        :param destination: The destination "path" to subscribe to.
+        :type destination: C{str}
         """
         raise NotImplementedError("%s client does not implement SUBSCRIBE" % (self.__class__,))
     
@@ -156,8 +156,8 @@ class BaseClient(object):
         """
         Unsubscribe from a given destination.
         
-        @param destination: The destination "path" to unsubscribe from.
-        @type destination: C{str}
+        :param destination: The destination "path" to unsubscribe from.
+        :type destination: C{str}
         """
         raise NotImplementedError("%s client does not implement UNSUBSCRIBE" % (self.__class__,))
         
@@ -165,8 +165,8 @@ class BaseClient(object):
         """
         Acknowledge receipt of a message.
         
-        @param transaction: (optional) The transaction ID associated with this ACK.
-        @type transaction: C{str}
+        :param transaction: (optional) The transaction ID associated with this ACK.
+        :type transaction: C{str}
         """
         ack = frame.AckFrame(message_id, transaction, extra_headers=extra_headers)
         return self.send_frame(ack)
@@ -176,11 +176,11 @@ class BaseClient(object):
         """
         Send a frame to the STOMP server and return result (if applicable).
         
-        @param frame: The frame instance to send.
-        @type frame: L{stomp.frame.Frame}
+        :param frame: The frame instance to send.
+        :type frame: :class:`stomp.frame.Frame`
         
-        @return: The "response" frame from stomp server (if applicable).
-        @rtype: L{stompclient.frame.Frame}
+        :return: The "response" frame from stomp server (if applicable).
+        :rtype: :class:`stompclient.frame.Frame`
         """
 
 class PublishClient(BaseClient):
@@ -196,26 +196,26 @@ class PublishClient(BaseClient):
     since it can be used with a ThreadLocalConnection pool (since there is no need for a message-
     receiving thread).
     
-    @ivar connection_pool: Object responsible for issuing STOMP connections (defaults to using
-                            L{stompclient.connection.ThreadLocalConnectionPool} for this client impl).
-    @type connection_pool: L{stompclient.connection.ConnectionPool}
+    :ivar connection_pool: Object responsible for issuing STOMP connections (defaults to using
+                            :class:`stompclient.connection.ThreadLocalConnectionPool` for this client impl).
+    :type connection_pool: :class:`stompclient.connection.ConnectionPool`
     """
 
     def __init__(self, host, port=61613, socket_timeout=None, connection_pool=None):
         """
         Initialize STOMP client.
         
-        @param host: The host for stomp server.
-        @type host: C{str}
+        :param host: The host for stomp server.
+        :type host: C{str}
         
-        @param port: THe port for stomp server.
-        @type port: C{int}
+        :param port: THe port for stomp server.
+        :type port: C{int}
         
-        @param socket_timeout: The timeout for underlying socket connection (set to C{None} for no timeout).
-        @type socket_timeout: C{float}
+        :param socket_timeout: The timeout for underlying socket connection (set to C{None} for no timeout).
+        :type socket_timeout: C{float}
         
-        @param connection_pool: A configured connection pool (defaults to L{ThreadLocalConnectionPool}).
-        @type connection_pool: L{stompclient.connection.ConnectionPool}
+        :param connection_pool: A configured connection pool (defaults to :class:`ThreadLocalConnectionPool`).
+        :type connection_pool: :class:`stompclient.connection.ConnectionPool`
         """
         connection_pool = connection_pool if connection_pool else ThreadLocalConnectionPool()
         super(PublishClient, self).__init__(host=host,
@@ -227,8 +227,8 @@ class PublishClient(BaseClient):
         """
         Subscribe to a given destination.
         
-        @param destination: The destination "path" to subscribe to.
-        @type destination: C{str}
+        :param destination: The destination "path" to subscribe to.
+        :type destination: C{str}
         """
         raise NotImplementedError("%s client does not implement SUBSCRIBE" % (self.__class__,))
 
@@ -236,8 +236,8 @@ class PublishClient(BaseClient):
         """
         Unsubscribe from a given destination.
         
-        @param destination: The destination to subscribe to.
-        @type destination: C{str}
+        :param destination: The destination to subscribe to.
+        :type destination: C{str}
         """
         raise NotImplementedError("%s client does not implement UNSUBSCRIBE" % (self.__class__,))
 
@@ -248,10 +248,10 @@ class PublishClient(BaseClient):
         This implementation does not support the 'receipt' header; it can be overridden
         in subclasses to support reading responses from the server socket.
         
-        @param frame: The frame instance to send.
-        @type frame: L{stomp.frame.Frame}
+        :param frame: The frame instance to send.
+        :type frame: :class:`stomp.frame.Frame`
         
-        @raise NotImplementedError: If the frame includes a 'receipt' header, since this implementation
+        :raise NotImplementedError: If the frame includes a 'receipt' header, since this implementation
                 does not support receiving data from the STOMP broker.
         """
         if 'receipt' in frame.headers:

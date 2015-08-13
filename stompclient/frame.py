@@ -35,15 +35,15 @@ class Frame(object):
     
     This class is based on code from the Stomper project, with a few modifications.
     
-    @ivar command: The STOMP command.  When assigned it is validated
+    :ivar command: The STOMP command.  When assigned it is validated
                 against the VALID_COMMANDS module-level list.
-    @type command: C{str}
+    :type command: `str`
     
-    @ivar headers: A dictionary of headers for this frame.
-    @type headers: C{dict}
+    :ivar headers: A dictionary of headers for this frame.
+    :type headers: `dict`
     
-    @ivar body: The body of the message (bytes).
-    @type body: C{str}
+    :ivar body: The body of the message (bytes).
+    :type body: `str`
     """    
     def __init__(self, command=None, headers=None, body=None):
         """
@@ -94,8 +94,8 @@ class Frame(object):
         """
         Parse command received from the server.
         
-        @return: The command.
-        @rtype: C{str}
+        :return: The command.
+        :rtype: `str`
         """
         command = framebytes.split('\n', 1)[0]
         return command
@@ -104,8 +104,8 @@ class Frame(object):
         """
         Parse headers received from the servers and convert to a :class:`dict`.
         
-        @return: The headers dict.
-        @rtype: C{dict}
+        :return: The headers dict.
+        :rtype: `dict`
         """
         # george:constanza\nelaine:benes
         # -> {"george": "constanza", "elaine": "benes"}
@@ -115,8 +115,8 @@ class Frame(object):
         """
         Create a string representation from object state.
         
-        @return: The string (bytes) for this stomp frame.
-        @rtype: C{str} 
+        :return: The string (bytes) for this stomp frame.
+        :rtype: `str` 
         """
         command = self.command
         headers = self.headers
@@ -178,7 +178,7 @@ class HeaderValue(object):
     This class is a descriptor, implementing  __get__ to return the calculated value.
     While according to  U{http://docs.codehaus.org/display/STOMP/Character+Encoding} there 
     seems to some general idea about having UTF-8 as the character encoding for headers;
-    however the C{stomper} lib does not support this currently.
+    however the `stomper` lib does not support this currently.
     
     For example, to use this class to generate the content-length header:
     
@@ -188,13 +188,13 @@ class HeaderValue(object):
         >>> str(headers['content-length'])
         '4' 
         
-    @ivar calc: The calculator function.
-    @type calc: C{callable}
+    :ivar calc: The calculator function.
+    :type calc: `callable`
     """
     def __init__(self, calculator):
         """
-        @param calculator: The calculator callable that will yield the desired value.
-        @type calculator: C{callable}
+        :param calculator: The calculator callable that will yield the desired value.
+        :type calculator: `callable`
         """
         if not callable(calculator):
             raise ValueError("Non-callable param: %s" % calculator)
@@ -240,14 +240,14 @@ class SendFrame(Frame):
     
     def __init__(self, destination, body=None, transaction=None, extra_headers=None):
         """
-        @param destination: The destination for message.
-        @type destination: C{str}
+        :param destination: The destination for message.
+        :type destination: `str`
         
-        @param body: The message body bytes.
-        @type body: C{str} 
+        :param body: The message body bytes.
+        :type body: `str` 
         
-        @param transaction: (optional) transaction identifier.
-        @type transaction: C{str}
+        :param transaction: (optional) transaction identifier.
+        :type transaction: `str`
         """
         super(SendFrame, self).__init__('SEND', headers=extra_headers, body=body)
         self.headers['content-length'] = HeaderValue(calculator=lambda: len(self.body))
@@ -260,17 +260,17 @@ class SubscribeFrame(Frame):
     
     def __init__(self, destination, ack=None, id=None, selector=None, extra_headers=None):
         """
-        @param destination: The destination being subscribed to.
-        @type destination: C{str}
+        :param destination: The destination being subscribed to.
+        :type destination: `str`
         
-        @param ack: Specific ack setting (if None, will not be added to headers)
-        @type ack: C{str}
+        :param ack: Specific ack setting (if None, will not be added to headers)
+        :type ack: `str`
         
-        @param id: An ID which can be referenced by UNSUBSCRIBE command later.
-        @type id: C{str}
+        :param id: An ID which can be referenced by UNSUBSCRIBE command later.
+        :type id: `str`
         
-        @param selector: A SQL-92 selector for content-based routing (if supported by broker). 
-        @type selector: C{str}
+        :param selector: A SQL-92 selector for content-based routing (if supported by broker). 
+        :type selector: `str`
         """
         super(SubscribeFrame, self).__init__('SUBSCRIBE', headers=extra_headers)
         self.headers['destination'] = destination
@@ -286,13 +286,13 @@ class UnsubscribeFrame(Frame):
     
     def __init__(self, destination=None, id=None, extra_headers=None):
         """
-        @param destination: The destination being unsubscribed from.
-        @type destination: C{str}
+        :param destination: The destination being unsubscribed from.
+        :type destination: `str`
         
-        @param id: An ID used in SUBSCRIBE command (can be used instead of desination).
-        @type id: C{str}
+        :param id: An ID used in SUBSCRIBE command (can be used instead of desination).
+        :type id: `str`
         
-        @raise ValueError: If neither destination nor id are specified.
+        :raise ValueError: If neither destination nor id are specified.
         """
         super(UnsubscribeFrame, self).__init__('UNSUBSCRIBE', headers=extra_headers)
         if not destination and not id:
@@ -308,8 +308,8 @@ class BeginFrame(Frame):
     
     def __init__(self, transaction, extra_headers=None):
         """
-        @param transaction: The transaction identifier.
-        @type transaction: C{str}
+        :param transaction: The transaction identifier.
+        :type transaction: `str`
         """
         super(BeginFrame, self).__init__('BEGIN', headers=extra_headers)
         self.headers['transaction'] = transaction
@@ -319,8 +319,8 @@ class CommitFrame(Frame):
     
     def __init__(self, transaction, extra_headers=None):
         """
-        @param transaction: The transaction identifier.
-        @type transaction: C{str}
+        :param transaction: The transaction identifier.
+        :type transaction: `str`
         """
         super(CommitFrame, self).__init__('COMMIT', headers=extra_headers)
         self.headers['transaction'] = transaction
@@ -330,8 +330,8 @@ class AbortFrame(Frame):
     
     def __init__(self, transaction, extra_headers=None):
         """
-        @param transaction: The transaction identifier.
-        @type transaction: C{str}
+        :param transaction: The transaction identifier.
+        :type transaction: `str`
         """
         super(AbortFrame, self).__init__('ABORT', headers=extra_headers)
         self.headers['transaction'] = transaction
@@ -341,11 +341,11 @@ class AckFrame(Frame):
     
     def __init__(self, message_id, transaction=None, extra_headers=None):
         """
-        @param message_id: The message ID being acknowledged.
-        @type message_id: C{str}
+        :param message_id: The message ID being acknowledged.
+        :type message_id: `str`
         
-        @param transaction: The transaction identifier.
-        @type transaction: C{str}
+        :param transaction: The transaction identifier.
+        :type transaction: `str`
         """
         super(AckFrame, self).__init__('ACK', headers=extra_headers)
         self.headers['message-id'] = message_id
@@ -359,13 +359,13 @@ class AckFrame(Frame):
 class ConnectedFrame(Frame):
     """ A CONNECTED server frame (response to CONNECT).
     
-    @ivar session: The (throw-away) session ID to include in response.
-    @type session: C{str} 
+    :ivar session: The (throw-away) session ID to include in response.
+    :type session: `str` 
     """
     def __init__(self, session, extra_headers=None):
         """
-        @param session: The (throw-away) session ID to include in response.
-        @type session: C{str}
+        :param session: The (throw-away) session ID to include in response.
+        :type session: `str`
         """
         super(ConnectedFrame,self).__init__('CONNECTED', headers=extra_headers)
         self.headers['session'] = session
@@ -375,8 +375,8 @@ class MessageFrame(Frame):
     
     def __init__(self, destination, body=None, message_id=None, extra_headers=None):
         """
-        @param body: The message body bytes.
-        @type body: C{str} 
+        :param body: The message body bytes.
+        :type body: `str` 
         """
         super(MessageFrame, self).__init__('MESSAGE', headers=extra_headers, body=body)
         if message_id is None:
@@ -391,8 +391,8 @@ class ErrorFrame(Frame):
     
     def __init__(self, message, body=None, extra_headers=None):
         """
-        @param body: The message body bytes.
-        @type body: C{str} 
+        :param body: The message body bytes.
+        :type body: `str` 
         """
         super(ErrorFrame, self).__init__('ERROR', headers=extra_headers, body=body)
         self.headers['message'] = message
@@ -406,8 +406,8 @@ class ReceiptFrame(Frame):
     
     def __init__(self, receipt, extra_headers=None):
         """
-        @param receipt: The receipt message ID.
-        @type receipt: C{str}
+        :param receipt: The receipt message ID.
+        :type receipt: `str`
         """
         super(ReceiptFrame, self).__init__('RECEIPT', headers=extra_headers)
         self.headers['receipt-id'] = receipt

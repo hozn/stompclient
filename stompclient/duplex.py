@@ -29,26 +29,26 @@ class BaseBlockingDuplexClient(BaseClient):
     """
     Base class for STOMP client that uses listener loop to receive frames.
     
-    This client uses the L{listen_forever} method to receive frames from the server.  Typically,
+    This client uses the :meth:`listen_forever` method to receive frames from the server.  Typically,
     this would be run in its own thread::
         
         listener_thread = threading.Thread(target=client.listen_forever)
         listener_thread.start()
         client.listening_event.wait()
     
-    @ivar listening_event: A threading event that will be set when the listening loop is running,
+    :ivar listening_event: A threading event that will be set when the listening loop is running,
                             meaning that client is receiving frames.
-    @type listening_event: C{threading.Event}
+    :type listening_event: threading.Event
     
-    @ivar shutdown_event: An event that will be set when the listening loop should terminate.  This 
-                            is set internally by the L{disconnect} method.
-    @type shutdown_event: C{threading.Event}
+    :ivar shutdown_event: An event that will be set when the listening loop should terminate.  This 
+                            is set internally by the :meth:`disconnect` method.
+    :type shutdown_event: threading.Event
     
-    @ivar subscribed_destinations: A C{dict} of subscribed destinations (only keys are required in base impl).
-    @type subscribed_destinations: C{dict} of C{str} to C{bool}
+    :ivar subscribed_destinations: A `dict` of subscribed destinations (only keys are required in base impl).
+    :type subscribed_destinations: dict[str,bool]
     
-    @ivar subscription_lock: A C{threading.RLock} used to guard access to L{subscribed_destionations} property.
-    @type subscription_lock: C{threading.RLock}
+    :ivar subscription_lock: A `threading.RLock` used to guard access to `subscribed_destionations` property.
+    :type subscription_lock: threading.RLock
     """
     __metaclass__ = abc.ABCMeta
     
@@ -66,8 +66,8 @@ class BaseBlockingDuplexClient(BaseClient):
         """
         Route the frame to the appropriate destination.
         
-        @param frame: Received frame.
-        @type frame: L{stompclient.frame.Frame}
+        :param frame: Received frame.
+        :type frame: :class:`stompclient.frame.Frame`
         """
         
     def listen_forever(self):
@@ -125,22 +125,22 @@ class QueueingDuplexClient(BaseBlockingDuplexClient):
     loop), it IS NOT thread-safe.  Specifically is must be used with a non-threadsafe
     connecton pool, so that the same connection can be accessed from multipl threads.
 
-    @ivar connected_queue: A queue to hold CONNECTED frames from the server.
-    @type connected_queue: C{Queue.Queue}
+    :ivar connected_queue: A queue to hold CONNECTED frames from the server.
+    :type connected_queue: `Queue.Queue`
     
-    @ivar message_queue: A queue of all the MESSAGE frames from the server to a
+    :ivar message_queue: A queue of all the MESSAGE frames from the server to a
                             destination that has been subscribed to.
-    @type message_queue: C{Queue.Queue}
+    :type message_queue: `Queue.Queue`
     
-    @ivar receipt_queue: A queue of RECEPT frames from the server (these are replies 
+    :ivar receipt_queue: A queue of RECEPT frames from the server (these are replies 
                             to requests that included the 'receipt' header).
-    @type receipt_queue: C{Queue.Queue} 
+    :type receipt_queue: `Queue.Queue` 
     
-    @ivar error_queue: A queue of ERROR frames from the server.
-    @type error_queue: C{Queue.Queue} 
+    :ivar error_queue: A queue of ERROR frames from the server.
+    :type error_queue: `Queue.Queue` 
     
-    @ivar queue_timeout: How long should calls block on fetching frames from queue before timeout and exception?
-    @type queue_timeout: C{float}  
+    :ivar queue_timeout: How long should calls block on fetching frames from queue before timeout and exception?
+    :type queue_timeout: `float`  
     """
     
     def __init__(self, host, port=61613, socket_timeout=3.0, connection_pool=None, queue_timeout=5.0):
@@ -158,8 +158,8 @@ class QueueingDuplexClient(BaseBlockingDuplexClient):
         """
         Route the frame to the appropriate destination.
         
-        @param frame: Received frame.
-        @type frame: L{stompclient.frame.Frame}
+        :param frame: Received frame.
+        :type frame: :class:`stompclient.frame.Frame`
         """
         if frame.command == 'RECEIPT':
             self.receipt_queue.put(frame)
@@ -184,11 +184,11 @@ class QueueingDuplexClient(BaseBlockingDuplexClient):
         """
         Send CONNECT frame to the STOMP server and return CONNECTED frame (if possible). 
         
-        This method will issue a warning (C{warnings.warn}) if the listener loop
+        This method will issue a warning (`warnings.warn`) if the listener loop
         is not running.
         
-        @return: The CONNECTED frame from the server.
-        @rtype: L{stompclient.frame.Frame}
+        :return: The CONNECTED frame from the server.
+        :rtype: :class:`stompclient.frame.Frame`
         """
         connect = frame.ConnectFrame(login, passcode, extra_headers=extra_headers)
         self.send_frame(connect)
@@ -205,12 +205,12 @@ class QueueingDuplexClient(BaseBlockingDuplexClient):
         """
         Subscribe to a given destination.
         
-        @param destination: The destination "path" to subscribe to.
-        @type destination: C{str}
+        :param destination: The destination "path" to subscribe to.
+        :type destination: `str`
         
-        @param ack: If set to 'client' will require clients to explicitly L{ack} any 
+        :param ack: If set to 'client' will require clients to explicitly :meth:`ack` any
                     frames received (in order for server to consider them delivered).
-        @type ack: C{str}
+        :type ack: `str`
         """
         subscribe = frame.SubscribeFrame(destination, ack=ack, extra_headers=extra_headers)
         res = self.send_frame(subscribe)
@@ -224,10 +224,10 @@ class QueueingDuplexClient(BaseBlockingDuplexClient):
         
         One of the 'destination' or 'id' parameters must be specified.
         
-        @param destination: The destination to subscribe to.
-        @type destination: C{str}
+        :param destination: The destination to subscribe to.
+        :type destination: `str`
         
-        @raise ValueError: Underlying code will raise if neither destination nor id 
+        :raise ValueError: Underlying code will raise if neither destination nor id 
                             params are specified. 
         """
         unsubscribe = frame.UnsubscribeFrame(destination, extra_headers=extra_headers)
@@ -247,10 +247,10 @@ class QueueingDuplexClient(BaseBlockingDuplexClient):
         received, because disconnecting the socket royally pisses off the listen_forever blocking
         loop.
         
-        @param frame: The frame instance to send.
-        @type frame: L{stomp.frame.Frame}
+        :param frame: The frame instance to send.
+        :type frame: L{stomp.frame.Frame}
         
-        @raise NotImplementedError: If the frame includes a 'receipt' header, since this implementation
+        :raise NotImplementedError: If the frame includes a 'receipt' header, since this implementation
                 does not support receiving data from the STOMP broker.
         """
         need_receipt = ('receipt' in frame.headers) 
@@ -270,16 +270,16 @@ class PublishSubscribeClient(QueueingDuplexClient):
     """
     A publish-subscribe client that supports providing callback functions for subscriptions.
     
-    @ivar subscribed_destinations: A C{dict} of subscribed destinations to callables.
-    @type subscribed_destinations: C{dict} of C{str} to C{callable} 
+    :ivar subscribed_destinations: A `dict` of subscribed destinations to callables.
+    :type subscribed_destinations: `dict` of `str` to `callable` 
     """
     
     def dispatch_frame(self, frame):
         """
         Route the frame to the appropriate destination.
         
-        @param frame: Received frame.
-        @type frame: L{stompclient.frame.Frame}
+        :param frame: Received frame.
+        :type frame: stompclient.frame.Frame
         """
         if frame.command == 'RECEIPT':
             self.receipt_queue.put(frame)
@@ -303,18 +303,18 @@ class PublishSubscribeClient(QueueingDuplexClient):
         """
         Subscribe to a given destination with specified callback function.
         
-        The callable will be passed the received L{stompclient.frame.Frame} object. 
+        The callable will be passed the received :class:`stompclient.frame.Frame` object.
         
-        @param destination: The destination "path" to subscribe to.
-        @type destination: C{str}
+        :param destination: The destination "path" to subscribe to.
+        :type destination: `str`
         
-        @param callback: The callable that will be sent frames received at 
+        :param callback: The callable that will be sent frames received at 
                             specified destination.
-        @type callback: C{callable} 
+        :type callback: `callable` 
         
-        @param ack: If set to 'client' will require clients to explicitly L{ack} any 
+        :param ack: If set to 'client' will require clients to explicitly :meth:`ack` any
                     frames received (in order for server to consider them delivered).
-        @type ack: C{str} 
+        :type ack: `str` 
         """
         subscribe = frame.SubscribeFrame(destination, ack=ack, extra_headers=extra_headers)
         res = self.send_frame(subscribe)

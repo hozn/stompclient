@@ -68,24 +68,25 @@ class Connection(object):
     and receiving STOMP frames.
     
     This class provides some basic synchronization to avoid threads stepping on eachother. 
-    Specifically the following activities are each protected by [their own] C{threading.RLock}
+    Specifically the following activities are each protected by [their own] `threading.RLock`
     instances:
-    - connect() and disconnect() methods (share a lock).
-    - read()
-    - send()
+    
+    * connect() and disconnect() methods (share a lock).
+    * read()
+    * send()
     
     It is assumed that send() and recv() should be allowed to happen concurrently, so these do 
     not *share* a lock.  If you need more thread-isolation, consider using a thread-safe 
-    connection pool implementation (e.g. L{stompclient.connection.ThreadLocalConnectionPool}).
+    connection pool implementation (e.g. :class:`stompclient.connection.ThreadLocalConnectionPool`).
     
-    @ivar host: The hostname/address for this connection.
-    @type host: C{str}
+    :ivar host: The hostname/address for this connection.
+    :type host: str
     
-    @ivar port: The port for this connection.
-    @type port: C{int}
+    :ivar port: The port for this connection.
+    :type port: int
     
-    @ivar socket_timeout: Socket timeout (in seconds).
-    @type socket_timeout: C{float}
+    :ivar socket_timeout: Socket timeout (in seconds).
+    :type socket_timeout: float
     """
     def __init__(self, host, port=61613, socket_timeout=None):
         self.host = host
@@ -128,8 +129,8 @@ class Connection(object):
     def disconnect(self, conf=None):
         """
         Disconnect from the server, if connected.
-        
-        @raise NotConnectedError: If the connection is not currently connected. 
+
+        :raises NotConnectedError: If the connection is not currently connected. 
         """
         with self._connect_lock:
             if self._sock is None:
@@ -146,8 +147,8 @@ class Connection(object):
         """
         Sends the specified frame to STOMP server.
         
-        @param frame: The frame to send to server.
-        @type frame: L{stompclient.frame.Frame}
+        :param frame: The frame to send to server.
+        :type frame: stompclient.frame.Frame
         """
         with self._send_lock:
             self.connect()
@@ -162,11 +163,11 @@ class Connection(object):
         """
         Blocking call to read and return a frame from underlying socket.
         
-        Frames are buffered using a L{stompclient.util.FrameBuffer} internally, so subsequent
+        Frames are buffered using a :class:`stompclient.util.FrameBuffer` internally, so subsequent
         calls to this method may simply return an already-buffered frame.
         
-        @return: A frame read from socket or buffered from previous socket read.
-        @rtype: L{stompclient.frame.Frame}
+        :return: A frame read from socket or buffered from previous socket read.
+        :rtype: :class:`stompclient.frame.Frame`
         """
         with self._read_lock:
             self.connect()
