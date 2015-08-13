@@ -12,7 +12,7 @@ __copyright__ = "Copyright 2010 Hans Lellelid"
 
 version = '0.3.2'
 
-news = os.path.join(os.path.dirname(__file__), 'docs', 'news.txt')
+news = os.path.join(os.path.dirname(__file__), 'docs', 'news.rst')
 news = open(news).read()
 parts = re.split(r'([0-9\.]+)\s*\n\r?-+\n\r?', news)
 found_news = ''
